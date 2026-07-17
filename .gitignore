@@ -1,0 +1,13 @@
+# IDM runtime — extracted from IDM-8.1.1.zip, never committed.
+# Rebuild with: unzip ~/Downloads/IDM-8.1.1.zip -d runtime/
+runtime/
+
+# Jars dropped into the lab (JDBC driver, connector bundles) — fetched, not authored
+*.jar
+
+# Secrets — Databricks PATs, RCS credentials. Never commit.
+*.env
+secrets/
+
+# OS noise
+.DS_Store
