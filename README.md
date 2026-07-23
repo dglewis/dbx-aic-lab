@@ -41,14 +41,16 @@ tenant nearly unchanged).
 
 ## Prerequisites (per the 8.1 install guide)
 
-- **Java 21** (Temurin recommended; Ping tests most on it). 17 is NOT supported
-  by IDM 8.1. Set `JAVA_HOME` to the JDK 21 home before startup.
+- **Two JDKs — IDM 8.1 requires Java 21; DS 8.1 requires Java 25** (verified:
+  DS 8.1.1 classes are compiled for class-file 69). Both installed sudo-free via
+  `brew install openjdk@21 openjdk@25`; IDM gets `JAVA_HOME`=21, DS gets
+  `DS_JAVA_HOME`=25.
 - Repository: **IDM 8.x has no embedded repo — a running PingDS instance is
   required before first boot.** The shipped `conf/repo.ds.json` has
   `"embedded": false` and expects DS at localhost:31389 (startTLS,
   `uid=admin` / `str0ngAdm1nPa55word`). DS-8.1.1.zip lives at the repo root;
   extract to `runtime/opendj/` and set up with the `idm-repo` profile (see
-  runbook). DS 8.1 also requires Java 21.
+  runbook). DS 8.1 requires Java 25 (see Java bullet above).
   **Base DN (verified):** `repo.ds.json` expects `dc=openidm,dc=forgerock,dc=com`,
   but the `idm-repo` profile defaults to domain `example.com` — setup MUST pass
   `--set idm-repo/domain:forgerock.com`.
@@ -61,9 +63,12 @@ tenant nearly unchanged).
 ## Runbook
 
 ```bash
-# fail-fast if Temurin 21 isn't installed — without -F, java_home silently
-# falls back to another JDK (this machine: 11)
-export JAVA_HOME=$(/usr/libexec/java_home -F -v 21) || exit 1
+# Split JDKs via sudo-free Homebrew formulas (temurin casks need interactive
+# sudo). One-time: brew install openjdk@21 openjdk@25
+# NB: /usr/libexec/java_home can't see keg-only brew JDKs — set paths directly.
+export JAVA_HOME="$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home"      # IDM
+export DS_JAVA_HOME="$(brew --prefix openjdk@25)/libexec/openjdk.jdk/Contents/Home"   # DS tools + server
+"$JAVA_HOME/bin/java" -version && "$DS_JAVA_HOME/bin/java" -version || exit 1
 
 # --- one-time DS repo setup (before first IDM start) ---
 # Source of truth: PingIDM 8.1 install-guide/external-ds.html +
@@ -99,10 +104,11 @@ cd runtime/openidm && ./startup.sh
 # verify: DS side  -> grep 31389 runtime/opendj/logs/ldap-access.audit.json | tail -1
 #         IDM side -> curl -k -u openidm-admin:openidm-admin https://localhost:8443/openidm/info/ping
 
-# Databricks JDBC driver (OSS, Apache 2.0) — 2.7.3 already fetched into
-# runtime/openidm/connectors/; re-run after a lab reset:
+# Databricks JDBC driver (OSS, Apache 2.0) — goes in openidm/lib/ (third-party
+# JDBC drivers, per the ScriptedSQL sample docs), NOT connectors/ (ICF bundles
+# only — IDM logs "Failed to add connector" if the driver lands there):
 mvn dependency:copy -Dartifact=com.databricks:databricks-jdbc:2.7.3 \
-  -DoutputDirectory=runtime/openidm/connectors/
+  -DoutputDirectory=runtime/openidm/lib/
 ```
 
 Secrets (Databricks PAT, warehouse HTTP path) live in untracked `*.env` /
