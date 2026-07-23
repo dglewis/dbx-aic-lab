@@ -1,5 +1,5 @@
-# IDM runtime — extracted from IDM-8.1.1.zip, never committed.
-# Rebuild with: unzip ~/Downloads/IDM-8.1.1.zip -d runtime/
+# IDM runtime — extracted from IDM-8.1.1.zip (repo root), never committed.
+# Rebuild with: unzip IDM-8.1.1.zip -d runtime/
 runtime/
 
 # Jars dropped into the lab (JDBC driver, connector bundles) — fetched, not authored

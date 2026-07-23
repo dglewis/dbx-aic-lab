@@ -20,7 +20,7 @@ tenant nearly unchanged).
 
 | Path | Tracked | Purpose |
 |---|---|---|
-| `runtime/openidm/` | no (gitignored) | Extracted IDM 8.1.1 — rebuild via `unzip ~/Downloads/IDM-8.1.1.zip -d runtime/` |
+| `runtime/openidm/` | no (gitignored) | Extracted IDM 8.1.1 — rebuild via `unzip IDM-8.1.1.zip -d runtime/` |
 | `runtime/opendj/` | no (gitignored) | Extracted DS 8.1.1 (IDM's repository) — binaries AND live instance data; `rm -rf runtime/` is the lab reset |
 | `secrets/` | no (gitignored) | Sensitive material: DS deployment ID, CA cert, Databricks PAT/env |
 | `idm-config/conf/` | yes | Provisioner + mapping JSON (`provisioner.openicf-*.json`, `sync.json`) — copied into `runtime/openidm/conf/` |
