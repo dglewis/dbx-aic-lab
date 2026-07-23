@@ -5,6 +5,9 @@ runtime/
 # Jars dropped into the lab (JDBC driver, connector bundles) — fetched, not authored
 *.jar
 
+# Vendor zips staged in the repo root (DS-8.1.1.zip etc.)
+*.zip
+
 # Secrets — Databricks PATs, RCS credentials. Never commit.
 *.env
 secrets/

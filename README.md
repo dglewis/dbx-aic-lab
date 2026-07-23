@@ -21,6 +21,8 @@ tenant nearly unchanged).
 | Path | Tracked | Purpose |
 |---|---|---|
 | `runtime/openidm/` | no (gitignored) | Extracted IDM 8.1.1 — rebuild via `unzip ~/Downloads/IDM-8.1.1.zip -d runtime/` |
+| `runtime/opendj/` | no (gitignored) | Extracted DS 8.1.1 (IDM's repository) — binaries AND live instance data; `rm -rf runtime/` is the lab reset |
+| `secrets/` | no (gitignored) | Sensitive material: DS deployment ID, CA cert, Databricks PAT/env |
 | `idm-config/conf/` | yes | Provisioner + mapping JSON (`provisioner.openicf-*.json`, `sync.json`) — copied into `runtime/openidm/conf/` |
 | `idm-config/script/` | yes | Groovy scripts if the ScriptedSQL fallback is needed |
 | `databricks/sql/` | yes | Table DDL, CDF setup, seed data |
@@ -37,15 +39,69 @@ tenant nearly unchanged).
 3. **Real AIC tenant** — flip RCS to client mode with tenant OAuth creds;
    swap Databricks PAT for an OAuth M2M service principal.
 
+## Prerequisites (per the 8.1 install guide)
+
+- **Java 21** (Temurin recommended; Ping tests most on it). 17 is NOT supported
+  by IDM 8.1. Set `JAVA_HOME` to the JDK 21 home before startup.
+- Repository: **IDM 8.x has no embedded repo — a running PingDS instance is
+  required before first boot.** The shipped `conf/repo.ds.json` has
+  `"embedded": false` and expects DS at localhost:31389 (startTLS,
+  `uid=admin` / `str0ngAdm1nPa55word`). DS-8.1.1.zip lives at the repo root;
+  extract to `runtime/opendj/` and set up with the `idm-repo` profile (see
+  runbook). DS 8.1 also requires Java 21.
+  **Base DN (verified):** `repo.ds.json` expects `dc=openidm,dc=forgerock,dc=com`,
+  but the `idm-repo` profile defaults to domain `example.com` — setup MUST pass
+  `--set idm-repo/domain:forgerock.com`.
+- The **legacy admin UI is not bundled in 8.1** (deprecated; separate Backstage
+  download). Lab admin happens over REST — connector/mapping config is JSON in
+  `conf/` anyway, which suits this repo's tracked-config approach.
+- macOS is not a supported OS for production IDM — fine for this lab only.
+- Eval sizing: ≥1 GB RAM, 10 GB disk (DS repo wants 5% of filesystem + 1 GB free).
+
 ## Runbook
 
 ```bash
-# start IDM (needs JDK 17 — default on this machine)
-cd runtime/openidm && ./startup.sh
-# admin UI: https://localhost:8443/admin  (openidm-admin / openidm-admin)
+# fail-fast if Temurin 21 isn't installed — without -F, java_home silently
+# falls back to another JDK (this machine: 11)
+export JAVA_HOME=$(/usr/libexec/java_home -F -v 21) || exit 1
 
-# fetch the Databricks JDBC driver (OSS, Apache 2.0) into the connectors dir
-mvn dependency:copy -Dartifact=com.databricks:databricks-jdbc:LATEST \
+# --- one-time DS repo setup (before first IDM start) ---
+# Source of truth: PingIDM 8.1 install-guide/external-ds.html +
+# PingDS 8.1 install-guide/profile-idm-repo.html.
+# The guide's "replace conf/repo.ds.json with db/ds/conf/repo.ds-external.json"
+# step is a no-op in IDM 8.1.1 — shipped files are identical (verified by diff).
+unzip DS-8.1.1.zip -d runtime/          # -> runtime/opendj
+runtime/opendj/bin/dskeymgr create-deployment-id \
+  --deploymentIdPassword password > secrets/ds-deployment-id
+export DEPLOYMENT_ID=$(cat secrets/ds-deployment-id)
+runtime/opendj/setup \
+  --deploymentId "$DEPLOYMENT_ID" --deploymentIdPassword password \
+  --rootUserDN uid=admin --rootUserPassword str0ngAdm1nPa55word \
+  --hostname localhost --adminConnectorPort 34444 --ldapPort 31389 \
+  --enableStartTls --profile idm-repo \
+  --set idm-repo/domain:forgerock.com \
+  --acceptLicense
+# optional, per DS guide (IDM manages passwords, not DS):
+runtime/opendj/bin/dsconfig set-password-policy-prop \
+  --policy-name "Default Password Policy" --reset password-validator --offline --no-prompt
+runtime/opendj/bin/dsconfig set-password-policy-prop \
+  --policy-name "Root Password Policy" --reset password-validator --offline --no-prompt
+# trust: import the deployment-ID CA into IDM's truststore
+runtime/opendj/bin/dskeymgr export-ca-cert --deploymentId "$DEPLOYMENT_ID" \
+  --deploymentIdPassword password --outputFile secrets/ds-ca-cert.pem
+keytool -importcert -noprompt -alias ds-ca-cert -file secrets/ds-ca-cert.pem \
+  -keystore runtime/openidm/security/truststore \
+  -storepass:file runtime/openidm/security/storepass
+runtime/opendj/bin/start-ds
+
+# --- IDM ---
+cd runtime/openidm && ./startup.sh
+# verify: DS side  -> grep 31389 runtime/opendj/logs/ldap-access.audit.json | tail -1
+#         IDM side -> curl -k -u openidm-admin:openidm-admin https://localhost:8443/openidm/info/ping
+
+# Databricks JDBC driver (OSS, Apache 2.0) — 2.7.3 already fetched into
+# runtime/openidm/connectors/; re-run after a lab reset:
+mvn dependency:copy -Dartifact=com.databricks:databricks-jdbc:2.7.3 \
   -DoutputDirectory=runtime/openidm/connectors/
 ```
 
