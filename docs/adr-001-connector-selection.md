@@ -19,7 +19,7 @@ config-only DatabaseTable connector and the script-driven ScriptedSQL
 | Object classes per instance | One table per connector instance | Multiple object classes in one connector |
 | Per-attribute schema flags (e.g. NOT_UPDATEABLE) | Not expressible; enforce via mappings only | Declared in the schema script |
 | Incremental sync | Changelog/timestamp column only; no delete detection | Any token strategy (timestamp, change-data-feed version); deletes detectable if source exposes them |
-| **Authentication** | Three knobs: `user`, `password` (encrypted at rest), URL template. Static secret is the natural fit; stronger flows (e.g. OAuth client-credentials) only by embedding secrets in the URL template — *outside* the encrypted field | DataSource built/configured in code (customizer script): secrets sourced from env/vault/ESV at runtime, never stored in connector config; rotation handled at the source; any driver-supported auth flow reachable |
+| **Authentication** | Static credential properties (`username`, `password` — encrypted by IDM on config load) plus the JDBC `url`. Static secret is the natural fit; stronger flows (e.g. OAuth client-credentials) only by embedding secrets in the URL — *outside* the encrypted field | Connection initialization customizable in code (customizer script): secrets sourced from env/vault/ESV at runtime, never stored in connector config; rotation handled at the source; any driver-supported auth flow reachable |
 
 ## Authentication posture (generic principle)
 
@@ -47,3 +47,47 @@ if the config-only connector passes all functional tests.
    enforcement needs, weighed against the cost of owning scripts.
 
 A pass on (1) with a strict answer on (2) or (3) still selects ScriptedSQL.
+
+## Citations
+
+Claims above are verified against official documentation and vendor-shipped
+artifacts in this repo's IDM 8.1.1 runtime:
+
+- **Single table per instance; changelog-column liveSync; no delete detection**
+  — [Database Table connector reference](https://docs.pingidentity.com/openicf/connector-reference/dbtable.html):
+  "lets you provision to a single table in a JDBC database"; "supports liveSync
+  for create and update operations only. To detect deletes in the database you
+  must run a full reconciliation."
+- **DatabaseTable tested-database list** (MySQL, PostgreSQL, Oracle 11gR2+,
+  SQL Server 2012+; paging unsupported elsewhere) — same page.
+- **DatabaseTable config surface** (`url`, `driverClassName`, `table`,
+  `keyColumn`, `username`, `password`, `changeLogColumn`) — same page.
+- **IDM encrypts connector passwords on config load** —
+  [PingIDM 8.1 Security Guide, Secure IDM data](https://docs.pingidentity.com/pingidm/8.1/security-guide/chap-data.html):
+  sensitive values (e.g. passwords) in configuration are encrypted when IDM
+  first reads the file.
+- **ScriptedSQL: one Groovy script per ICF operation; JDBC url/username/password
+  properties; embedded Tomcat JDBC pool** —
+  [Scripted SQL connector reference](https://docs.pingidentity.com/openicf/connector-reference/scripted-sql.html).
+- **Customizer script exists as a toolkit config property**
+  (`customizerScriptFileName`) —
+  [Groovy Connector Toolkit reference](https://docs.pingidentity.com/openicf/connector-reference/groovy.html).
+  Vendor-shipped example implementing OAuth client-credentials in a customizer:
+  `runtime/openidm/samples/scripted-rest-with-dj/tools/CustomizerScript.groovy`
+  (imports `CLIENT_ID`, `CLIENT_SECRET`, `GRANT_TYPE`, `OAUTH_REQUEST`).
+- **Per-attribute schema flags in scripted schema** — vendor-shipped sample
+  `runtime/openidm/samples/scripted-sql-with-mysql/tools/SchemaScript.groovy`
+  (imports/uses `AttributeInfo.Flags`: `REQUIRED`, `NOT_READABLE`,
+  `NOT_RETURNED_BY_DEFAULT`); the full `AttributeInfo$Flags` enum in the
+  shipped `bundle/connector-framework-1.5.20.33.jar` is `REQUIRED`,
+  `MULTIVALUED`, `NOT_CREATABLE`, `NOT_UPDATEABLE`, `NOT_READABLE`,
+  `NOT_RETURNED_BY_DEFAULT`.
+- **Driver auth properties for the JDBC source used in this project**
+  (PAT: `AuthMech=3;UID=token;PWD=<token>`; OAuth M2M:
+  `AuthMech=11;Auth_Flow=1;OAuth2ClientId=…;OAuth2Secret=…`, settable in the
+  JDBC URL) —
+  [Databricks JDBC Driver (OSS) authentication](https://docs.databricks.com/aws/en/integrations/jdbc-oss/authentication).
+
+Note: automatic OAuth token refresh is documented explicitly for the driver's
+U2M flow; the M2M flow's refresh behavior is not explicitly documented and is
+not relied on by this ADR.
