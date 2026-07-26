@@ -14,7 +14,8 @@ tenant nearly unchanged).
 - **Spike question:** does the bundled DatabaseTable connector survive the
   Databricks JDBC driver (dialect, auto-commit-only transactions, metadata
   calls)? If yes, keep it (config-only). If it fights, fall back to
-  ScriptedSQL — both connector jars ship with IDM 8.1.1.
+  ScriptedSQL — both connector jars ship with IDM 8.1.1. Full trade-off
+  analysis, including authentication posture: [docs/adr-001-connector-selection.md](docs/adr-001-connector-selection.md).
 
 ## Layout
 
