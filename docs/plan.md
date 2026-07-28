@@ -11,11 +11,21 @@
 - [x] IDM `ACTIVE_READY` on 8443; Databricks JDBC 2.7.3 in `openidm/lib/`, clean load
 - [x] ADR-001 (connector selection criteria, cited)
 
+Databricks tenant connectivity (infrastructure, not spike work):
+- [ ] **DAN**: sign up for Free Edition —
+      <https://login.databricks.com/?intent=CE_SIGN_UP> (email OTP, Google, or
+      Microsoft; provisions a serverless workspace automatically)
+- [ ] **DAN**: warehouse connection details (SQL Warehouses → warehouse →
+      **Connection details**: server hostname + HTTP path) and a PAT
+      (Settings → **Developer** → Access tokens) → `secrets/databricks.env`
+      (`DATABRICKS_HOST`, `DATABRICKS_HTTP_PATH`, `DATABRICKS_PAT`)
+- [ ] Connectivity smoke test from the lab: standalone JDBC `SELECT 1` through
+      `databricks-jdbc-2.7.3.jar` (proves network + auth + driver before any
+      connector is involved)
+
 ## Phase 1 — DatabaseTable spike vs Databricks Free Edition
 
 Setup:
-- [ ] **DAN**: Free Edition workspace; note SQL warehouse hostname + HTTP path
-- [ ] **DAN**: create PAT → `secrets/databricks.env` (`DATABRICKS_HOST`, `DATABRICKS_HTTP_PATH`, `DATABRICKS_PAT`)
 - [ ] Run `databricks/sql/001_lab_tables.sql` (tables + CDF + seed rows)
 - [ ] Fill provisioner placeholders from `secrets/databricks.env`; copy
       `idm-config/conf/provisioner.openicf-databricksInbound.json` →
