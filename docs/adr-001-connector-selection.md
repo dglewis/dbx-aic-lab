@@ -45,6 +45,10 @@ if the config-only connector passes all functional tests.
    service-account OAuth with secrets kept out of config required?
 3. Operational gaps: delete detection and per-attribute read-only
    enforcement needs, weighed against the cost of owning scripts.
+4. Config topology: one system-named provisioner serving both directions
+   (scripted, multiple object classes) vs one instance per table forced by
+   the config-only connector — doubled connection pools, credentials
+   config, and lifecycle to manage.
 
 A pass on (1) with a strict answer on (2) or (3) still selects ScriptedSQL.
 

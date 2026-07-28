@@ -36,9 +36,14 @@ Bidirectional = two unidirectional mappings over disjoint datasets (no loop risk
 | Managed object | `managed/businessRecord` (target) | `managed/outboundRecord` (source) |
 | Mapping | recon + liveSync (`changeLogColumn` = `last_modified`) | implicit sync on managed-object change + recon |
 
-DatabaseTable is one-table-per-instance, so the spike uses **two provisioner
-instances** (`provisioner.openicf-databricksInbound.json`, `-databricksOutbound.json`).
-The ScriptedSQL fallback would collapse to one connector with two object classes.
+**Provisioner naming convention:** a provisioner is named for the *system* it
+connects to — never for a flow direction, which belongs to mappings. Preferred
+shape: a single `provisioner.openicf-databricks.json` serving both directions.
+ScriptedSQL supports this directly (one connector, two object classes).
+DatabaseTable's one-table-per-instance limit forces two instances; if that path
+wins the spike, instances are suffixed by *dataset*, not direction:
+`provisioner.openicf-databricks-<table>.json`. This asymmetry is a
+connector-selection input (ADR-001).
 
 ## Read-only attribute set (inbound)
 
