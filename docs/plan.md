@@ -14,17 +14,15 @@
 Databricks tenant connectivity (infrastructure, not spike work):
 - [x] **DAN**: Free Edition workspace signed up; `secrets/databricks.env`
       created (host, HTTP path, OAuth URL, JDBC URL, workspace ID)
-- [ ] **DAN**: generate PAT → `DATABRICKS_PAT` in `secrets/databricks.env`.
-      **Scope: choose the `BI Tools` preset** — docs: "Select BI Tools for
-      tools that connect to Databricks SQL warehouses"; a JDBC client is
-      exactly that class. (Manual-scope equivalent under Other APIs: `sql`.)
-      Lifetime: 30d covers the spike; Free Edition, non-production.
-      *2026-09-09: stored token rejected server-side (403 Invalid access
-      token, confirmed via REST too) — needs a fresh mint.*
-- [~] Connectivity smoke test from the lab: standalone JDBC `SELECT 1` through
-      `databricks-jdbc-2.7.3.jar` — **built and run** (`databricks/smoke-test.sh`):
-      driver + TLS + warehouse endpoint verified; JDBC URL format corrected
-      (see spike-results.md); completes once the fresh PAT lands
+- [x] **DAN**: generate PAT → `DATABRICKS_PAT` in `secrets/databricks.env`
+      (BI Tools scope preset, 30d). First stored token was already
+      expired/revoked (403); fresh mint 2026-09-09 → auth green
+- [x] Connectivity smoke test from the lab: `databricks/smoke-test.sh` →
+      SMOKE-OK (catalog `workspace`, authed as Dan). Two env findings in
+      spike-results.md: quote the JDBC URL in the sourced env file
+      (unquoted `;` truncates it — the real cause of driver error 500177),
+      and `EnableArrow=0` on the URL (Arrow fetch breaks on Java 21 without
+      `--add-opens`)
 
 ## Phase 1 — ScriptedSQL spike vs Databricks Free Edition
 
@@ -35,8 +33,8 @@ Databricks tenant connectivity (infrastructure, not spike work):
 > M2M migration checklist lives in design.md → "Migration: PAT → OAuth M2M".
 
 Setup:
-- [ ] Run `databricks/sql/001_lab_tables.sql` (tables + CDF + seed rows) —
-      authored; apply with `databricks/apply-sql.sh` once the PAT is fresh
+- [x] Run `databricks/sql/001_lab_tables.sql` (tables + CDF + seed rows) —
+      applied via `databricks/apply-sql.sh`: schema + 2 tables + 3/2 seeds
 - [x] Groovy scripts in `idm-config/script/` (Test, Schema, Search, Sync,
       Create, Update, Delete; modeled on shipped `scripted-sql-with-mysql`
       sample): two object classes (`businessRecord`, `outboundRecord`), CDF
@@ -52,18 +50,20 @@ Setup:
       object types registered
 
 Spike execution (acceptance criteria — runner: `idm-config/acceptance-test.sh`):
-- [ ] `test`: `POST /openidm/system/databricks?_action=test` → ok
-- [ ] schema read: `GET /openidm/system/databricks/businessRecord/_schema`
-      sane, read-only flags present
-- [ ] search/recon: query returns seed rows; paging behavior noted
-- [ ] create / update / delete via `/openidm/system/databricks/businessRecord`
-      → verified in Databricks
-- [ ] liveSync: CDF token picks up out-of-band insert + update **+ delete**
-- [ ] outbound: same `test` + create against
-      `/openidm/system/databricks/outboundRecord`
+- [x] `test`: `POST /openidm/system/databricks?_action=test` → ok
+- [x] schema visible: both object types exposed from the one instance;
+      read-only `last_modified` verified live (client-supplied value on PUT
+      discarded, server re-stamps via `current_timestamp()`)
+- [x] search/recon: seed rows returned; paging works (LIMIT + record_id
+      cookie at `_pageSize=2`)
+- [x] create / update / delete via `/openidm/system/databricks/businessRecord`
+      → each write cross-checked out-of-band in Databricks over JDBC
+- [x] liveSync: CDF token 4 → 7 over out-of-band insert + update **+ delete**
+- [x] outbound: seed query + create against
+      `/openidm/system/databricks/outboundRecord` on the same instance
 
-Record results in `docs/spike-results.md` (ADR-001 already closed; results
-validate the choice or reopen it).
+**Results recorded: `docs/spike-results.md` — 14/14 PASS, ADR-001 validated.
+Phase 1 complete (2026-09-09).**
 
 ## Phase 2 — RCS topology rehearsal
 
