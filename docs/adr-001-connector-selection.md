@@ -1,6 +1,7 @@
 # ADR-001: DatabaseTable vs ScriptedSQL connector selection
 
-**Status:** Open — decided by spike results (see README "Spike question").
+**Status:** Accepted (2026-09-09) — **ScriptedSQL**. Decided on decision
+inputs (2) and (4) below, ahead of the functional spike; see Decision.
 
 ## Context
 
@@ -52,6 +53,40 @@ if the config-only connector passes all functional tests.
 
 A pass on (1) with a strict answer on (2) or (3) still selects ScriptedSQL.
 
+## Decision
+
+**ScriptedSQL**, decided without running the DatabaseTable spike:
+
+1. **Auth policy (input 2) answers strictly.** The production target is
+   service-principal OAuth M2M with secrets kept out of connector config.
+   DatabaseTable can reach M2M only by embedding `OAuth2ClientId`/`OAuth2Secret`
+   in the JDBC `url` property — plain config, outside IDM's encrypted
+   credential fields. ScriptedSQL sources credentials at runtime in the
+   customizer script (env/ESV/vault), so rotation never touches config. Per
+   the rule above, this alone selects ScriptedSQL.
+2. **Config topology (input 4).** One system-named provisioner
+   (`provisioner.openicf-databricks.json`) serves both tables as object
+   classes in a single connector instance; DatabaseTable would force two
+   instances with doubled pools, credentials, and lifecycle.
+3. Supporting: CDF-based sync detects deletes (DatabaseTable's
+   changelog-column liveSync cannot); per-attribute `NOT_UPDATEABLE`
+   enforcement lives in the connector schema, not only in mappings.
+
+**Lab-auth finding (2026-09-09):** Databricks Free Edition — the spike
+workspace — does not support service-principal OAuth at all: it provides no
+account console or account-level APIs, and SP OAuth depends on that
+account-level identity infrastructure (confirmed by Databricks staff; not
+explicitly documented). The driver's U2M flow is browser-interactive and
+unfit for a headless connector. The spike therefore runs on a **PAT as a
+deliberate lab-only stopgap** — BI Tools scope, 30-day lifetime, disposable
+workspace, value held in gitignored `secrets/` + `boot.properties` — while
+the connector's credential path is built scripted from day one so the PAT →
+M2M swap is a secret-source change, not a redesign. Migration checklist:
+[design.md, "Migration: PAT → OAuth M2M"](design.md).
+
+Functional acceptance (input 1) still runs — now to validate ScriptedSQL
+against the Databricks driver, not to choose between connectors.
+
 ## Citations
 
 Claims above are verified against official documentation and vendor-shipped
@@ -86,6 +121,15 @@ artifacts in this repo's IDM 8.1.1 runtime:
   shipped `bundle/connector-framework-1.5.20.33.jar` is `REQUIRED`,
   `MULTIVALUED`, `NOT_CREATABLE`, `NOT_UPDATEABLE`, `NOT_READABLE`,
   `NOT_RETURNED_BY_DEFAULT`.
+- **Free Edition: no account console / account-level APIs; auth limited to
+  email OTP and Google/Microsoft sign-in** —
+  [Free Edition limitations](https://docs.databricks.com/aws/en/getting-started/free-edition-limitations).
+  SP-OAuth dependence on account-level identity infrastructure confirmed by
+  Databricks staff:
+  [community thread](https://community.databricks.com/t5/administration-architecture/zerobus-ingestion-fails-in-databricks-free-edition-using-service/td-p/161228).
+- **OAuth M2M: access tokens valid one hour; scoped secrets cap minted-token
+  scope** —
+  [OAuth M2M authorization](https://docs.databricks.com/aws/en/dev-tools/auth/oauth-m2m).
 - **Driver auth properties for the JDBC source used in this project**
   (PAT: `AuthMech=3;UID=token;PWD=<token>`; OAuth M2M:
   `AuthMech=11;Auth_Flow=1;OAuth2ClientId=…;OAuth2Secret=…`, settable in the
