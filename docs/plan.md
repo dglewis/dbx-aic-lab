@@ -19,9 +19,12 @@ Databricks tenant connectivity (infrastructure, not spike work):
       tools that connect to Databricks SQL warehouses"; a JDBC client is
       exactly that class. (Manual-scope equivalent under Other APIs: `sql`.)
       Lifetime: 30d covers the spike; Free Edition, non-production.
-- [ ] Connectivity smoke test from the lab: standalone JDBC `SELECT 1` through
-      `databricks-jdbc-2.7.3.jar` (proves network + auth + driver before any
-      connector is involved)
+      *2026-09-09: stored token rejected server-side (403 Invalid access
+      token, confirmed via REST too) — needs a fresh mint.*
+- [~] Connectivity smoke test from the lab: standalone JDBC `SELECT 1` through
+      `databricks-jdbc-2.7.3.jar` — **built and run** (`databricks/smoke-test.sh`):
+      driver + TLS + warehouse endpoint verified; JDBC URL format corrected
+      (see spike-results.md); completes once the fresh PAT lands
 
 ## Phase 1 — ScriptedSQL spike vs Databricks Free Edition
 
@@ -32,17 +35,23 @@ Databricks tenant connectivity (infrastructure, not spike work):
 > M2M migration checklist lives in design.md → "Migration: PAT → OAuth M2M".
 
 Setup:
-- [ ] Run `databricks/sql/001_lab_tables.sql` (tables + CDF + seed rows)
-- [ ] Groovy scripts in `idm-config/script/` (Test, Schema, Search, Sync,
-      Create, Update, Delete + Customizer; model on shipped
-      `scripted-sql-with-mysql` sample): two object classes
-      (`businessRecord`, `outboundRecord`), CDF `_commit_version` sync token,
-      `NOT_UPDATEABLE` flags on the read-only set
-- [ ] Single `idm-config/conf/provisioner.openicf-databricks.json` (both
-      object classes); customizer reads `&{databricks.pat}` — add to
-      `resolver/boot.properties`; copy config+scripts into `runtime/openidm/`
+- [ ] Run `databricks/sql/001_lab_tables.sql` (tables + CDF + seed rows) —
+      authored; apply with `databricks/apply-sql.sh` once the PAT is fresh
+- [x] Groovy scripts in `idm-config/script/` (Test, Schema, Search, Sync,
+      Create, Update, Delete; modeled on shipped `scripted-sql-with-mysql`
+      sample): two object classes (`businessRecord`, `outboundRecord`), CDF
+      `_commit_version` sync token, read-only `last_modified` flagged
+      NOT_CREATABLE/NOT_UPDATEABLE (business read-only set still TBD);
+      compile-checked against the runtime's shipped jars. PAT flows through
+      provisioner `username`/`password` properties (encrypted by IDM);
+      the customizer script arrives with the M2M migration
+- [x] Single `idm-config/conf/provisioner.openicf-databricks.json` (both
+      object classes, secrets via `&{databricks.pat}`/`&{databricks.jdbc.url}`);
+      `idm-config/deploy.sh` copies config+scripts into `runtime/openidm/`
+      and syncs boot.properties — deployed, connector activates in IDM,
+      object types registered
 
-Spike execution (acceptance criteria):
+Spike execution (acceptance criteria — runner: `idm-config/acceptance-test.sh`):
 - [ ] `test`: `POST /openidm/system/databricks?_action=test` → ok
 - [ ] schema read: `GET /openidm/system/databricks/businessRecord/_schema`
       sane, read-only flags present

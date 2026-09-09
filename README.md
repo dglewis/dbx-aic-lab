@@ -27,7 +27,7 @@ tenant nearly unchanged).
 | `secrets/` | no (gitignored) | Sensitive material: DS deployment ID, CA cert, Databricks PAT/env |
 | `idm-config/conf/` | yes | Provisioner + mapping JSON (`provisioner.openicf-*.json`, `sync.json`) — copied into `runtime/openidm/conf/` |
 | `idm-config/script/` | yes | ScriptedSQL Groovy scripts (one per ICF operation + customizer) |
-| `databricks/sql/` | yes | Table DDL, CDF setup, seed data |
+| `databricks/` | yes | Lab tooling: `smoke-test.sh` (JDBC connectivity), `apply-sql.sh` + `JdbcRunner.java` (run SQL over the driver), `sql/` (DDL, CDF setup, seed data) |
 | `rcs/` | yes | Phase-2 Java RCS config |
 | `docs/` | yes | Notes, spike results |
 

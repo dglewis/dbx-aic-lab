@@ -78,11 +78,15 @@ as a fallback token strategy) but is not the sync mechanism.
 
 ### Credential path (ScriptedSQL)
 
-`CustomizerScript.groovy` builds the connection: it reads the secret from the
-environment at runtime (lab: `&{databricks.pat}` via `boot.properties`; AIC:
-ESV) and assembles the JDBC properties in code. Tracked config never holds a
-secret in any phase, so swapping auth mechanisms changes the customizer +
-secret source only — no provisioner or mapping changes.
+Lab (PAT): the connector's pooled connection uses the provisioner's
+`username`/`password` properties (`token` / `&{databricks.pat}`) with the
+URL in `&{databricks.jdbc.url}` — values substituted from
+`resolver/boot.properties`, synced from `secrets/` by `idm-config/deploy.sh`;
+IDM encrypts the password property on config load. M2M: credential
+acquisition moves into `CustomizerScript.groovy`, which reads the client
+ID/secret from env/ESV at runtime and assembles the JDBC properties in code.
+Tracked config never holds a secret in either phase, so the swap changes the
+customizer + secret source only — no provisioner or mapping changes.
 
 ### Migration: PAT → OAuth M2M (service principal)
 
