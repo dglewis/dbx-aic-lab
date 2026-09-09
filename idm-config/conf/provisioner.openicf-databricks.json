@@ -1,0 +1,112 @@
+{
+    "connectorRef" : {
+        "bundleName" : "org.forgerock.openicf.connectors.scriptedsql-connector",
+        "bundleVersion" : "[1.5.0.0,1.6.0.0)",
+        "connectorName" : "org.forgerock.openicf.connectors.scriptedsql.ScriptedSQLConnector"
+    },
+    "producerBufferSize" : 100,
+    "operationTimeout" : {
+        "CREATE" : -1,
+        "TEST" : -1,
+        "AUTHENTICATE" : -1,
+        "SEARCH" : -1,
+        "VALIDATE" : -1,
+        "GET" : -1,
+        "UPDATE" : -1,
+        "DELETE" : -1,
+        "SCRIPT_ON_CONNECTOR" : -1,
+        "SCRIPT_ON_RESOURCE" : -1,
+        "SYNC" : -1,
+        "SCHEMA" : -1
+    },
+    "configurationProperties" : {
+        "username" : "token",
+        "password" : "&{databricks.pat}",
+        "driverClassName" : "com.databricks.client.jdbc.Driver",
+        "url" : "&{databricks.jdbc.url}",
+        "autoCommit" : true,
+        "validationQuery" : "SELECT 1",
+        "validationInterval" : "2000",
+        "testOnBorrow" : true,
+        "createScriptFileName" : "CreateScript.groovy",
+        "testScriptFileName" : "TestScript.groovy",
+        "searchScriptFileName" : "SearchScript.groovy",
+        "deleteScriptFileName" : "DeleteScript.groovy",
+        "updateScriptFileName" : "UpdateScript.groovy",
+        "syncScriptFileName" : "SyncScript.groovy",
+        "schemaScriptFileName" : "SchemaScript.groovy",
+        "scriptRoots" : [
+            "&{idm.instance.dir}/script/databricks"
+        ]
+    },
+    "resultsHandlerConfig" : {
+        "enableAttributesToGetSearchResultsHandler" : true
+    },
+    "syncFailureHandler" : {
+        "maxRetries" : 5,
+        "postRetryAction" : "logged-ignore"
+    },
+    "objectTypes" : {
+        "businessRecord" : {
+            "$schema" : "http://json-schema.org/draft-03/schema",
+            "id" : "businessRecord",
+            "type" : "object",
+            "nativeType" : "businessRecord",
+            "properties" : {
+                "record_id" : {
+                    "type" : "string",
+                    "required" : true,
+                    "nativeName" : "__NAME__",
+                    "nativeType" : "string"
+                },
+                "ref_id" : {
+                    "type" : "string",
+                    "required" : false,
+                    "nativeName" : "ref_id",
+                    "nativeType" : "string"
+                },
+                "last_modified" : {
+                    "type" : "string",
+                    "required" : false,
+                    "nativeName" : "last_modified",
+                    "nativeType" : "string",
+                    "flags" : [
+                        "NOT_CREATEABLE",
+                        "NOT_UPDATEABLE"
+                    ]
+                }
+            }
+        },
+        "outboundRecord" : {
+            "$schema" : "http://json-schema.org/draft-03/schema",
+            "id" : "outboundRecord",
+            "type" : "object",
+            "nativeType" : "outboundRecord",
+            "properties" : {
+                "record_id" : {
+                    "type" : "string",
+                    "required" : true,
+                    "nativeName" : "__NAME__",
+                    "nativeType" : "string"
+                },
+                "ref_id" : {
+                    "type" : "string",
+                    "required" : false,
+                    "nativeName" : "ref_id",
+                    "nativeType" : "string"
+                },
+                "last_modified" : {
+                    "type" : "string",
+                    "required" : false,
+                    "nativeName" : "last_modified",
+                    "nativeType" : "string",
+                    "flags" : [
+                        "NOT_CREATEABLE",
+                        "NOT_UPDATEABLE"
+                    ]
+                }
+            }
+        }
+    },
+    "operationOptions" : { }
+}
