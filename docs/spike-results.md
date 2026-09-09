@@ -140,3 +140,39 @@ is an open decision.
 
 Root cause of the wrong claim: trusted a community-thread inference
 instead of testing. Vendor limits get verified empirically from now on.
+
+## 2026-09-09 — connector migrated to SP OAuth M2M: 15/15 as the SP
+
+The connector now authenticates as `idm-connector-lab` (design.md
+"Credential path, as built"): `CustomizerScript.groovy` assembles
+`AuthMech=11;Auth_Flow=1;OAuth2ClientId/Secret` at init from the encrypted
+`customSensitiveConfiguration` propertyBag; `deploy.sh` purges
+`databricks.pat` from `boot.properties`, so **IDM holds no PAT at all** —
+the SP is the only credential the connector could have used.
+
+Evidence:
+
+- [`evidence/acceptance-20260909-152314.log`](evidence/acceptance-20260909-152314.log)
+  — full suite 15/15 on M2M, IDM log line "Databricks connection set to
+  OAuth M2M as service principal <sp-client-id>".
+- **Databricks query history** (independent, server-side): 21 recent
+  warehouse queries executed by user `<sp-client-id>`
+  (the SP) vs 4 by <admin-user> (admin out-of-band tooling).
+- [`evidence/acceptance-20260909-152159.log`](evidence/acceptance-20260909-152159.log)
+  — the run immediately after IDM restart: early steps failed transiently
+  (cold serverless warehouse + first M2M token exchange while the facade
+  initialized; routes 404'd) and the suite self-healed mid-run. Recorded as
+  a cold-start characteristic, not a defect: production topologies should
+  expect first-connect latency after restart against an auto-stopped
+  warehouse.
+
+Toolkit findings baked into the design doc: scripted-sql's customizer is a
+plain script body with `configuration` bound (the scripted-REST
+`customize { init {…} }` DSL breaks script loading); the ScriptedSQL doc
+page omits customizer/customSensitiveConfiguration, but the shipped
+`ScriptedSQLConfiguration` inherits both (javap + live probe).
+
+Open: 80-minute token-lifetime soak (`databricks/soak-test.sh`, pool
+`maxAge=50min` vs 1-hour tokens) — running; results land in
+`docs/evidence/soak-*.log`. Workspace PAT revocation deferred while admin
+tooling still uses it.

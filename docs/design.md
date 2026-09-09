@@ -59,36 +59,37 @@ as a fallback token strategy) but is not the sync mechanism.
 
 ## Authentication
 
-- **Lab:** PAT (`AuthMech=3;UID=token` semantics), scoped to the **BI Tools**
-  preset (SQL-warehouse connections — the JDBC connector's exact class; manual
-  equivalent is the `sql` API scope). Value supplied via IDM property
-  substitution `&{databricks.pat}` — tracked configs never contain secrets;
-  the value lives in `resolver/boot.properties` (gitignored runtime) sourced
-  from `secrets/`. Note: Databricks has no ICF-specific integration — its
-  integrations catalog treats JDBC clients as BI-tool-class connections, which
-  is how this connector presents.
-- **Why PAT (for now):** historical only — the original "Free Edition can't
-  do SP OAuth" rationale was disproven 2026-09-09 (ADR-001, retracted
-  lab-auth finding): SP `idm-connector-lab` + workspace-generated OAuth
-  secret + M2M token exchange + JDBC `AuthMech=11` all verified working on
-  this workspace. The PAT remains the connector's current auth until the
-  migration below is executed, which the lab can now do without waiting for
-  a paid workspace.
-- **Production:** service-principal OAuth M2M
-  (`AuthMech=11;Auth_Flow=1;OAuth2ClientId/Secret`), access tokens valid one
-  hour. Reaching this cleanly decided ADR-001 for ScriptedSQL.
+- **Connector (lab and production): service-principal OAuth M2M**
+  (`AuthMech=11;Auth_Flow=1;OAuth2ClientId/Secret`, access tokens valid one
+  hour) — migrated in the lab 2026-09-09 as SP `idm-connector-lab`. Reaching
+  this cleanly decided ADR-001 for ScriptedSQL. Pool `maxAge` is 50 min so
+  no pooled connection outlives its token (driver M2M auto-refresh is
+  undocumented).
+- **PAT (admin tooling only):** the connector no longer holds a PAT —
+  `deploy.sh` removes `databricks.pat` from `boot.properties`. The BI-Tools-
+  scoped PAT in `secrets/` remains for admin-side lab tooling only
+  (`apply-sql.sh`, `smoke-test.sh`, grants, acceptance out-of-band checks).
 
-### Credential path (ScriptedSQL)
+### Credential path (ScriptedSQL, as built)
 
-Lab (PAT): the connector's pooled connection uses the provisioner's
-`username`/`password` properties (`token` / `&{databricks.pat}`) with the
-URL in `&{databricks.jdbc.url}` — values substituted from
-`resolver/boot.properties`, synced from `secrets/` by `idm-config/deploy.sh`;
-IDM encrypts the password property on config load. M2M: credential
-acquisition moves into `CustomizerScript.groovy`, which reads the client
-ID/secret from env/ESV at runtime and assembles the JDBC properties in code.
-Tracked config never holds a secret in either phase, so the swap changes the
-customizer + secret source only — no provisioner or mapping changes.
+The provisioner's `customSensitiveConfiguration` — a GuardedString property,
+**encrypted by IDM at rest** — carries
+`oauth2 { clientId = '&{databricks.sp.client.id}'; secret = '&{databricks.sp.client.secret}' }`,
+substituted from `resolver/boot.properties` (lab; ESVs in AIC), synced from
+`secrets/` by `idm-config/deploy.sh`. At connector init the framework decrypts
+it into `configuration.propertyBag`, and `CustomizerScript.groovy` strips any
+auth params from the base `&{databricks.jdbc.url}` and appends the M2M set —
+so the secret exists only in encrypted config and in memory, never in a
+plaintext property. `username`/`password` are unused placeholders (the driver
+ignores UID/PWD under `AuthMech=11`; verified). Rotation = new SP secret →
+update the secret source → recycle the connector; tracked config unchanged.
+
+**Verified toolkit fact (1.5.20.33):** the scripted-sql customizer is a plain
+script body with `configuration` in the binding; the scripted-REST
+`customize { init { … } }` DSL breaks script loading here. The ScriptedSQL
+doc page omits the customizer/custom-config properties, but
+`ScriptedSQLConfiguration` inherits them from `ScriptedConfiguration`
+(verified via javap and live probe).
 
 ### Migration: PAT → OAuth M2M (service principal)
 
@@ -103,16 +104,25 @@ lab for SP `idm-connector-lab` (client ID in `secrets/databricks.env`).
    CATALOG`/`USE SCHEMA` plus `SELECT, MODIFY` on the two lab tables only.
    ✔ lab (verified: `SELECT current_user()` over JDBC returns the SP)
 4. **Store the secret out of config:** lab → `secrets/databricks.env` +
-   `boot.properties` substitution; AIC → ESVs referenced by the RCS.
-5. **Switch the customizer:** connection properties become
-   `AuthMech=11;Auth_Flow=1` with `OAuth2ClientId`/`OAuth2Secret` injected at
-   runtime (replacing `AuthMech=3;UID=token;PWD=<pat>`).
-6. **Validate token refresh over a held-open pool:** M2M auto-refresh is
-   *not* explicitly documented for the driver (ADR-001 note). Soak-test a
-   connector instance past the 1-hour token lifetime; if connections sour,
-   have the customizer/pool recycle connections inside the token window.
-7. **Retire the PAT:** revoke it in the workspace and delete
-   `DATABRICKS_PAT` from `secrets/databricks.env`.
+   `boot.properties` substitution into the encrypted
+   `customSensitiveConfiguration`; AIC → ESVs referenced by the RCS.
+   ✔ lab
+5. **Switch to the customizer:** `CustomizerScript.groovy` assembles
+   `AuthMech=11;Auth_Flow=1;OAuth2ClientId/OAuth2Secret` at init (replacing
+   `AuthMech=3;UID=token;PWD=<pat>`). ✔ lab — acceptance 15/15 as the SP,
+   confirmed by Databricks query history
+6. **Validate token refresh over a held-open pool:** pool `maxAge=3000000`
+   (50 min) recycles connections inside the 1-hour token window; soak test
+   past the boundary (`databricks/soak-test.sh`, evidence under
+   `docs/evidence/`). Note: after an IDM restart against a cold serverless
+   warehouse, the first M2M connect (token exchange + warehouse wake) can
+   make early operations fail transiently until the pool establishes —
+   self-heals; consider warm-up/retry in production.
+7. **Retire the PAT:** ✔ connector side — `deploy.sh` purges
+   `databricks.pat` from `boot.properties`, so IDM holds no PAT. Workspace
+   revocation is optional while admin lab tooling (`apply-sql.sh` etc.)
+   still authenticates with it; revoke when that tooling moves to the SP or
+   at spike end.
 8. **Rotation thereafter:** rotate the OAuth secret at the source (new
    secret → update ESV/env → recycle connector); connector config untouched.
 

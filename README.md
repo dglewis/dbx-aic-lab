@@ -39,9 +39,10 @@ tenant nearly unchanged).
    Free Edition, run test/recon/CRUD/liveSync (CDF sync token).
 2. **RCS topology rehearsal** — move connector + driver jars to a local Java
    RCS (server mode), point IDM at it.
-3. **Real AIC tenant** — flip RCS to client mode with tenant OAuth creds;
-   swap Databricks PAT for an OAuth M2M service principal (checklist in
-   docs/design.md; needs a paid workspace — Free Edition has no SP OAuth).
+3. **Real AIC tenant** — flip RCS to client mode with tenant OAuth creds.
+   Databricks auth is already service-principal OAuth M2M (migrated in the
+   lab — Free Edition supports SP OAuth after all; see docs/design.md
+   checklist): recreate SP + grants in the tenant workspace, secrets to ESVs.
 
 ## Prerequisites (per the 8.1 install guide)
 
