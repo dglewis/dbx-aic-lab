@@ -20,11 +20,14 @@
         "SCHEMA" : -1
     },
     "configurationProperties" : {
-        "username" : "token",
-        "password" : "&{databricks.pat}",
+        "username" : "unused-oauth-m2m",
+        "password" : "unused-oauth-m2m",
         "driverClassName" : "com.databricks.client.jdbc.Driver",
         "url" : "&{databricks.jdbc.url}",
+        "customizerScriptFileName" : "CustomizerScript.groovy",
+        "customSensitiveConfiguration" : "oauth2 { clientId = '&{databricks.sp.client.id}'; secret = '&{databricks.sp.client.secret}' }",
         "autoCommit" : true,
+        "maxAge" : 3000000,
         "validationQuery" : "SELECT 1",
         "validationInterval" : "2000",
         "testOnBorrow" : true,
