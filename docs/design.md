@@ -67,11 +67,13 @@ as a fallback token strategy) but is not the sync mechanism.
   from `secrets/`. Note: Databricks has no ICF-specific integration — its
   integrations catalog treats JDBC clients as BI-tool-class connections, which
   is how this connector presents.
-- **Why PAT at all:** Free Edition does not support service-principal OAuth —
-  it has no account console or account-level APIs, and SP OAuth depends on
-  that identity infrastructure (ADR-001, lab-auth finding). U2M is
-  browser-interactive, unusable headless. The PAT is a lab-only stopgap; the
-  scripted credential path (below) makes replacing it a secret-source change.
+- **Why PAT (for now):** historical only — the original "Free Edition can't
+  do SP OAuth" rationale was disproven 2026-09-09 (ADR-001, retracted
+  lab-auth finding): SP `idm-connector-lab` + workspace-generated OAuth
+  secret + M2M token exchange + JDBC `AuthMech=11` all verified working on
+  this workspace. The PAT remains the connector's current auth until the
+  migration below is executed, which the lab can now do without waiting for
+  a paid workspace.
 - **Production:** service-principal OAuth M2M
   (`AuthMech=11;Auth_Flow=1;OAuth2ClientId/Secret`), access tokens valid one
   hour. Reaching this cleanly decided ADR-001 for ScriptedSQL.
@@ -90,15 +92,16 @@ customizer + secret source only — no provisioner or mapping changes.
 
 ### Migration: PAT → OAuth M2M (service principal)
 
-Prerequisite: a workspace with account-level identity infrastructure (any
-paid/standard tier; **not** Free Edition).
+Works on Free Edition (verified 2026-09-09); steps 1–3 are **done** in the
+lab for SP `idm-connector-lab` (client ID in `secrets/databricks.env`).
 
-1. **Create the service principal** (account console → Identity and access →
-   Service principals) and add it to the workspace.
-2. **Generate an OAuth secret** for it — record client ID + secret once;
-   choose scoped secrets so minted tokens can't exceed the granted scopes.
+1. **Create the service principal** (workspace Settings → Identity and
+   access → Service principals; or the workspace SCIM API). ✔ lab
+2. **Generate an OAuth secret** for it (SP → Secrets → Generate secret) —
+   record client ID + secret once. ✔ lab
 3. **Least-privilege grants:** warehouse `CAN USE`; Unity Catalog `USE
    CATALOG`/`USE SCHEMA` plus `SELECT, MODIFY` on the two lab tables only.
+   ✔ lab (verified: `SELECT current_user()` over JDBC returns the SP)
 4. **Store the secret out of config:** lab → `secrets/databricks.env` +
    `boot.properties` substitution; AIC → ESVs referenced by the RCS.
 5. **Switch the customizer:** connection properties become

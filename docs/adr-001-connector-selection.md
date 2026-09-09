@@ -72,17 +72,24 @@ A pass on (1) with a strict answer on (2) or (3) still selects ScriptedSQL.
    changelog-column liveSync cannot); per-attribute `NOT_UPDATEABLE`
    enforcement lives in the connector schema, not only in mappings.
 
-**Lab-auth finding (2026-09-09):** Databricks Free Edition — the spike
-workspace — does not support service-principal OAuth at all: it provides no
-account console or account-level APIs, and SP OAuth depends on that
-account-level identity infrastructure (confirmed by Databricks staff; not
-explicitly documented). The driver's U2M flow is browser-interactive and
-unfit for a headless connector. The spike therefore runs on a **PAT as a
-deliberate lab-only stopgap** — BI Tools scope, 30-day lifetime, disposable
-workspace, value held in gitignored `secrets/` + `boot.properties` — while
-the connector's credential path is built scripted from day one so the PAT →
-M2M swap is a secret-source change, not a redesign. Migration checklist:
-[design.md, "Migration: PAT → OAuth M2M"](design.md).
+**Lab-auth finding (2026-09-09) — RETRACTED same day:** this ADR originally
+claimed Free Edition cannot do service-principal OAuth (sourced from a
+community thread, not tested). **Empirically disproven on the lab
+workspace:** a service principal was created via the workspace SCIM API, an
+OAuth secret generated in the workspace UI (Identity and access → Service
+principals → Secrets), the client-credentials exchange at
+`https://<host>/oidc/v1/token` returned a 1-hour `all-apis` Bearer token,
+and `SELECT current_user()` over JDBC with
+`AuthMech=11;Auth_Flow=1;OAuth2ClientId/Secret` executed as the SP after
+least-privilege grants (warehouse `CAN USE`; UC `USE CATALOG`/`USE SCHEMA`
++ `SELECT, MODIFY` on the two lab tables). Evidence in
+docs/spike-results.md. Free Edition still has no account *console*, but
+workspace-level SP identity + OAuth secrets are sufficient for M2M.
+Consequence: the PAT (BI Tools scope, 30d) is merely the connector's
+*current* lab auth; the M2M migration checklist
+([design.md, "Migration: PAT → OAuth M2M"](design.md)) is executable in the
+lab now rather than deferred to a paid workspace. Lesson recorded: vendor
+limits get verified empirically before they decide anything.
 
 Functional acceptance (input 1) still runs — now to validate ScriptedSQL
 against the Databricks driver, not to choose between connectors.
@@ -121,12 +128,14 @@ artifacts in this repo's IDM 8.1.1 runtime:
   shipped `bundle/connector-framework-1.5.20.33.jar` is `REQUIRED`,
   `MULTIVALUED`, `NOT_CREATABLE`, `NOT_UPDATEABLE`, `NOT_READABLE`,
   `NOT_RETURNED_BY_DEFAULT`.
-- **Free Edition: no account console / account-level APIs; auth limited to
-  email OTP and Google/Microsoft sign-in** —
+- **Free Edition: no account console; login auth limited to email OTP and
+  Google/Microsoft sign-in** —
   [Free Edition limitations](https://docs.databricks.com/aws/en/getting-started/free-edition-limitations).
-  SP-OAuth dependence on account-level identity infrastructure confirmed by
-  Databricks staff:
-  [community thread](https://community.databricks.com/t5/administration-architecture/zerobus-ingestion-fails-in-databricks-free-edition-using-service/td-p/161228).
+  A [community thread](https://community.databricks.com/t5/administration-architecture/zerobus-ingestion-fails-in-databricks-free-edition-using-service/td-p/161228)
+  inferred SP OAuth was therefore unavailable — **disproven empirically on
+  this project's workspace 2026-09-09** (see the retracted lab-auth finding
+  above): workspace-level SP creation, OAuth secret generation, and M2M
+  token exchange all work on Free Edition.
 - **OAuth M2M: access tokens valid one hour; scoped secrets cap minted-token
   scope** —
   [OAuth M2M authorization](https://docs.databricks.com/aws/en/dev-tools/auth/oauth-m2m).

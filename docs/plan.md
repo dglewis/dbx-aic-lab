@@ -74,9 +74,9 @@ Phase 1 complete (2026-09-09).**
 ## Phase 3 — real AIC tenant
 
 - [ ] **DAN**: tenant access (dev env); RCS client-mode OAuth creds
-- [ ] **DAN**: paid/standard Databricks workspace (Free Edition can't do SP
-      OAuth) — then run the full PAT → M2M checklist in design.md
-      ("Migration: PAT → OAuth M2M"): service principal, scoped OAuth
-      secret, least-privilege grants, customizer swap, token-refresh soak
-      test, PAT revoked
+- [ ] Complete the PAT → M2M migration in the lab (design.md checklist —
+      **unblocked 2026-09-09**: SP OAuth verified working on Free Edition,
+      steps 1–3 done for `idm-connector-lab`): customizer swap,
+      token-refresh soak test past the 1-hour lifetime, PAT revoked
 - [ ] Port provisioners/mappings; ESVs for secrets; re-run acceptance set
+      (tenant workspace: recreate SP + grants there per the same checklist)
