@@ -7,13 +7,14 @@ selected ScriptedSQL; these results validate the choice or reopen it.
 
 ### Verified working
 
-- **JDBC URL format (driver 2.7.3):** the workspace-generated URL with a
-  `/default` path segment (`jdbc:databricks://host:443/default;…`) fails to
-  parse — driver error 500177 "Error getting http path from connection
-  string". The documented format has properties directly after the port:
-  `jdbc:databricks://<host>:443;transportMode=http;ssl=1;AuthMech=3;httpPath=<path>`.
-  `secrets/databricks.env` corrected accordingly. With the corrected URL the
-  driver resolves, negotiates TLS, and reaches the warehouse endpoint.
+- **JDBC URL / 500177 root cause (corrected same day):** driver error
+  500177 "Error getting http path from connection string" was NOT the URL
+  format — the `/default` path segment parses fine (retested explicitly).
+  The real bug: `secrets/databricks.env` is `source`d by the lab scripts,
+  and the URL's **unquoted semicolons** truncated the value at `:443`,
+  discarding `httpPath`. Fix: the `DATABRICKS_JDBC_URL` value is now
+  double-quoted in the env file. Lesson: a shell-sourced env value
+  containing `;` must be quoted.
 - **Network + TLS + warehouse reachability:** standalone smoke test
   (`databricks/smoke-test.sh`) reaches the workspace; server responds
   (with an auth error — see blocker).
@@ -26,13 +27,12 @@ selected ScriptedSQL; these results validate the choice or reopen it.
   `&{databricks.jdbc.url}`; `idm-config/deploy.sh` syncs real values from
   `secrets/databricks.env` into `resolver/boot.properties`.
 
-### Blocker
+### Blocker — resolved same day
 
 - **PAT invalid (403 "Invalid access token")** — confirmed independently of
-  JDBC via REST (`/api/2.0/preview/scim/v2/Me` → 403). The stored token is
-  well-formed (`dapi` + 32 hex) but expired or revoked. **DAN**: mint a fresh
-  PAT (Settings → Developer → Access tokens; BI Tools scope preset, 30d) and
-  replace `DATABRICKS_PAT` in `secrets/databricks.env`.
+  JDBC via REST (`/api/2.0/preview/scim/v2/Me` → 403). The stored token was
+  well-formed (`dapi` + 32 hex) but expired or revoked. Dan minted a fresh
+  PAT (BI Tools scope, 30d) → auth green.
 
 ### Lab quirk (recorded, not blocking)
 
@@ -45,27 +45,60 @@ selected ScriptedSQL; these results validate the choice or reopen it.
   `org.forgerock.openicf` loggers at DEBUG (enabled in the runtime's
   logback.xml for the spike).
 
-### Next run (once the PAT is replaced)
+## 2026-09-09 (fresh PAT) — ACCEPTANCE RUN: 14/14 PASS
 
-```bash
-databricks/smoke-test.sh                            # SELECT 1 → SMOKE-OK
-databricks/apply-sql.sh databricks/sql/001_lab_tables.sql   # tables+CDF+seed
-idm-config/deploy.sh                                # re-sync boot.properties
-idm-config/acceptance-test.sh                       # full acceptance set
-```
+**Evidence:** every raw REST/SQL response of the (re-)run is captured in
+[`evidence/acceptance-20260909-143900.log`](evidence/acceptance-20260909-143900.log)
+(15/15 on the evidenced re-run — the read-only enforcement check was added
+as its own step). The runner script *is* the record of the exact commands;
+the log records what IDM and Databricks actually returned, timestamped,
+with the repo commit noted in its header. Reproduce anytime with
+`idm-config/acceptance-test.sh` — each run writes a fresh log under
+`docs/evidence/`.
 
-Acceptance criteria mapping (plan.md → acceptance-test.sh steps): test (1),
-schema visibility (2), search/recon + paging (3), CRUD verified in
-Databricks (4), CDF liveSync over out-of-band insert+update+delete (5),
-outbound object class on the same instance (6).
+Chain: `smoke-test.sh` → `apply-sql.sh 001_lab_tables.sql` → `deploy.sh` →
+IDM restart → `acceptance-test.sh`, all against the live warehouse:
 
-### Open questions for the acceptance run
+| # | Criterion | Result |
+|---|---|---|
+| 1 | `system/databricks?_action=test` | PASS |
+| 2 | Both object classes exposed from one instance | PASS |
+| 3 | Search returns seed rows; paging cookie at `_pageSize=2` | PASS ×2 |
+| 4 | Create/read/update/delete via IDM REST, each write verified out-of-band in Databricks over JDBC | PASS ×7 |
+| 5 | liveSync: CDF token advanced 4 → 7 over out-of-band insert + update + **delete** | PASS |
+| 6 | Outbound object class: seed query + create on the same connector | PASS ×2 |
 
-- Does `current_catalog()` default to `workspace` on this Free Edition
-  workspace? (DDL and the `TABLES` maps assume it; one-line change if not.)
-- Prepared-statement (`?`) support through the Simba driver for
-  INSERT/UPDATE/DELETE — expected fine, verified by step 4.
-- `DESCRIBE HISTORY` / `table_changes()` through JDBC on serverless —
-  verified by step 5.
-- Warehouse auto-start latency vs the pool's `validationQuery` timeout on
-  cold starts.
+**ScriptedSQL vs the Databricks JDBC driver is validated — ADR-001's
+selection holds.** Delete detection via CDF works (the DatabaseTable
+changelog approach could not have passed step 5).
+
+Environment facts confirmed in the run:
+
+- `current_catalog()` = `workspace` on this Free Edition workspace —
+  DDL and script `TABLES` maps correct as written.
+- Prepared statements (`?` params) work through the driver for
+  SELECT/INSERT/UPDATE/DELETE (steps 3–4).
+- `DESCRIBE HISTORY` and `table_changes()` work over JDBC against the
+  serverless warehouse (step 5).
+- Cold-start latency was no issue in this run; revisit only if the pool's
+  `validationQuery` ever times out on a cold warehouse.
+
+### New finding — Arrow result fetch vs modern JVMs: `EnableArrow=0`
+
+With auth working, the driver's Arrow-based result fetch crashes on Java 21
+(`InaccessibleObjectException: module java.base does not "opens java.nio"`)
+unless the JVM runs with `--add-opens=java.base/java.nio=ALL-UNNAMED`.
+Rather than patching JVM flags into IDM's startup (and later the RCS), the
+connection property **`EnableArrow=0`** is appended to the JDBC URL — the
+driver falls back to its non-Arrow fetch path everywhere, no JVM changes
+anywhere. Perf cost is irrelevant at lab row counts; revisit for production
+volumes (the trade-off then moves to `--add-opens` on the RCS host JVM).
+
+Also fixed: `DATABRICKS_JDBC_URL` in `secrets/databricks.env` must be
+double-quoted — the lab scripts `source` the file, and unquoted `;` in the
+value truncates it (the true root cause of the earlier 500177).
+
+### Phase 1 status: **complete**
+
+Next: Phase 2 (RCS topology rehearsal) — re-run this same acceptance set
+through a local Java RCS in server mode, unchanged.
