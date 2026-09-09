@@ -7,7 +7,7 @@ Status: current as of phase 1 (local lab). Decisions cite [ADR-001](adr-001-conn
 | Component | Role | Phase-1 realization |
 |---|---|---|
 | Databricks | System of record (inbound) / target (outbound) | Free Edition, serverless SQL warehouse, Unity Catalog, Delta tables |
-| ICF connector | CRUD + sync over JDBC | DatabaseTable connector (spike); ScriptedSQL fallback — both bundled in IDM 8.1.1 |
+| ICF connector | CRUD + sync over JDBC | **ScriptedSQL (Groovy)** — decided per ADR-001 (auth posture + topology); bundled in IDM 8.1.1 |
 | JDBC driver | Wire protocol | OSS `databricks-jdbc` 2.7.3, class `com.databricks.client.jdbc.Driver` (verified from jar), in `openidm/lib/` |
 | Sync engine | Recon, liveSync, mappings | Local PingIDM 8.1.1 (DS-backed) standing in for AIC — same engine, configs port to tenant |
 | RCS | Connector host in production topology | Phase 2 (local, server mode) → phase 3 (AIC tenant, client mode) |
@@ -32,34 +32,30 @@ Bidirectional = two unidirectional mappings over disjoint datasets (no loop risk
 
 | | Inbound | Outbound |
 |---|---|---|
-| System object | `system/databricksInbound/account` | `system/databricksOutbound/account` |
+| System object | `system/databricks/businessRecord` | `system/databricks/outboundRecord` |
 | Managed object | `managed/businessRecord` (target) | `managed/outboundRecord` (source) |
-| Mapping | recon + liveSync (`changeLogColumn` = `last_modified`) | implicit sync on managed-object change + recon |
+| Mapping | recon + liveSync (CDF sync token) | implicit sync on managed-object change + recon |
 
 **Provisioner naming convention:** a provisioner is named for the *system* it
-connects to — never for a flow direction, which belongs to mappings. Preferred
-shape: a single `provisioner.openicf-databricks.json` serving both directions.
-ScriptedSQL supports this directly (one connector, two object classes).
-DatabaseTable's one-table-per-instance limit forces two instances; if that path
-wins the spike, instances are suffixed by *dataset*, not direction:
-`provisioner.openicf-databricks-<table>.json`. This asymmetry is a
-connector-selection input (ADR-001).
+connects to — never for a flow direction, which belongs to mappings. With
+ScriptedSQL decided (ADR-001), a single `provisioner.openicf-databricks.json`
+serves both directions: one connector instance, two object classes named for
+their datasets.
 
 ## Read-only attribute set (inbound)
 
-Attribute list TBD (business decision). Enforcement:
-- DatabaseTable path: attributes absorbed source→managed only; never mapped
-  managed→source. Mapping-level enforcement only (connector has no schema flags).
-- ScriptedSQL path: additionally declared `NOT_UPDATEABLE`/`NOT_CREATABLE` in
-  `SchemaScript.groovy` (connector-level enforcement; flags verified in the
-  shipped framework jar).
+Attribute list TBD (business decision). Enforcement is two-layer:
+- Connector level: declared `NOT_UPDATEABLE`/`NOT_CREATABLE` in
+  `SchemaScript.groovy` (flags verified in the shipped framework jar).
+- Mapping level: attributes absorbed source→managed only; never mapped
+  managed→source.
 
 ## Sync / change detection
 
-- **DatabaseTable:** liveSync via `changeLogColumn: last_modified`. Documented
-  limitation: create/update only — deletes require scheduled full recon.
-- **ScriptedSQL fallback:** sync token = CDF `_commit_version` (Long) via
-  `table_changes()`; detects deletes; no timestamp-precision pitfalls.
+Sync token = CDF `_commit_version` (Long) via `table_changes()` in
+`SyncScript.groovy`: detects creates, updates, **and deletes**; no
+timestamp-precision pitfalls. The `last_modified` column remains as data (and
+as a fallback token strategy) but is not the sync mechanism.
 
 ## Authentication
 
@@ -71,9 +67,47 @@ Attribute list TBD (business decision). Enforcement:
   from `secrets/`. Note: Databricks has no ICF-specific integration — its
   integrations catalog treats JDBC clients as BI-tool-class connections, which
   is how this connector presents.
+- **Why PAT at all:** Free Edition does not support service-principal OAuth —
+  it has no account console or account-level APIs, and SP OAuth depends on
+  that identity infrastructure (ADR-001, lab-auth finding). U2M is
+  browser-interactive, unusable headless. The PAT is a lab-only stopgap; the
+  scripted credential path (below) makes replacing it a secret-source change.
 - **Production:** service-principal OAuth M2M
-  (`AuthMech=11;Auth_Flow=1;OAuth2ClientId/Secret`). Reaching this cleanly is a
-  connector-selection criterion — see ADR-001 authentication posture.
+  (`AuthMech=11;Auth_Flow=1;OAuth2ClientId/Secret`), access tokens valid one
+  hour. Reaching this cleanly decided ADR-001 for ScriptedSQL.
+
+### Credential path (ScriptedSQL)
+
+`CustomizerScript.groovy` builds the connection: it reads the secret from the
+environment at runtime (lab: `&{databricks.pat}` via `boot.properties`; AIC:
+ESV) and assembles the JDBC properties in code. Tracked config never holds a
+secret in any phase, so swapping auth mechanisms changes the customizer +
+secret source only — no provisioner or mapping changes.
+
+### Migration: PAT → OAuth M2M (service principal)
+
+Prerequisite: a workspace with account-level identity infrastructure (any
+paid/standard tier; **not** Free Edition).
+
+1. **Create the service principal** (account console → Identity and access →
+   Service principals) and add it to the workspace.
+2. **Generate an OAuth secret** for it — record client ID + secret once;
+   choose scoped secrets so minted tokens can't exceed the granted scopes.
+3. **Least-privilege grants:** warehouse `CAN USE`; Unity Catalog `USE
+   CATALOG`/`USE SCHEMA` plus `SELECT, MODIFY` on the two lab tables only.
+4. **Store the secret out of config:** lab → `secrets/databricks.env` +
+   `boot.properties` substitution; AIC → ESVs referenced by the RCS.
+5. **Switch the customizer:** connection properties become
+   `AuthMech=11;Auth_Flow=1` with `OAuth2ClientId`/`OAuth2Secret` injected at
+   runtime (replacing `AuthMech=3;UID=token;PWD=<pat>`).
+6. **Validate token refresh over a held-open pool:** M2M auto-refresh is
+   *not* explicitly documented for the driver (ADR-001 note). Soak-test a
+   connector instance past the 1-hour token lifetime; if connections sour,
+   have the customizer/pool recycle connections inside the token window.
+7. **Retire the PAT:** revoke it in the workspace and delete
+   `DATABRICKS_PAT` from `secrets/databricks.env`.
+8. **Rotation thereafter:** rotate the OAuth secret at the source (new
+   secret → update ESV/env → recycle connector); connector config untouched.
 
 ## Topology phases
 

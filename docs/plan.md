@@ -23,30 +23,38 @@ Databricks tenant connectivity (infrastructure, not spike work):
       `databricks-jdbc-2.7.3.jar` (proves network + auth + driver before any
       connector is involved)
 
-## Phase 1 — DatabaseTable spike vs Databricks Free Edition
+## Phase 1 — ScriptedSQL spike vs Databricks Free Edition
+
+> ADR-001 closed 2026-09-09: **ScriptedSQL** selected on auth posture (M2M
+> with secrets out of config) + config topology, without spiking
+> DatabaseTable. This phase validates ScriptedSQL against the Databricks
+> driver. Lab auth is a scoped PAT (Free Edition can't do SP OAuth); the
+> M2M migration checklist lives in design.md → "Migration: PAT → OAuth M2M".
 
 Setup:
 - [ ] Run `databricks/sql/001_lab_tables.sql` (tables + CDF + seed rows)
-- [ ] Fill provisioner placeholders from `secrets/databricks.env`; copy
-      `idm-config/conf/provisioner.openicf-databricksInbound.json` →
-      `runtime/openidm/conf/`; add `databricks.pat` to `resolver/boot.properties`
+- [ ] Groovy scripts in `idm-config/script/` (Test, Schema, Search, Sync,
+      Create, Update, Delete + Customizer; model on shipped
+      `scripted-sql-with-mysql` sample): two object classes
+      (`businessRecord`, `outboundRecord`), CDF `_commit_version` sync token,
+      `NOT_UPDATEABLE` flags on the read-only set
+- [ ] Single `idm-config/conf/provisioner.openicf-databricks.json` (both
+      object classes); customizer reads `&{databricks.pat}` — add to
+      `resolver/boot.properties`; copy config+scripts into `runtime/openidm/`
 
-Spike execution (acceptance criteria — all against the inbound table):
-- [ ] `test`: `POST /openidm/system/databricksInbound?_action=test` → ok
-- [ ] schema read: `GET /openidm/system/databricksInbound/account/_schema` sane
-- [ ] search/recon: query returns seed rows; paging behavior noted (`disablePaging` if needed)
-- [ ] create / update / delete via `/openidm/system/databricksInbound/account` →
-      verified in Databricks
-- [ ] liveSync: `changeLogColumn=last_modified` picks up out-of-band insert+update
-- [ ] outbound instance: same `test` + create against `outbound_records`
+Spike execution (acceptance criteria):
+- [ ] `test`: `POST /openidm/system/databricks?_action=test` → ok
+- [ ] schema read: `GET /openidm/system/databricks/businessRecord/_schema`
+      sane, read-only flags present
+- [ ] search/recon: query returns seed rows; paging behavior noted
+- [ ] create / update / delete via `/openidm/system/databricks/businessRecord`
+      → verified in Databricks
+- [ ] liveSync: CDF token picks up out-of-band insert + update **+ delete**
+- [ ] outbound: same `test` + create against
+      `/openidm/system/databricks/outboundRecord`
 
-Fallback triggers (any → switch to ScriptedSQL, per ADR-001):
-- generated SQL rejected by Databricks dialect (quoting, paging, prepared stmts)
-- transaction/commit calls fail against auto-commit-only warehouse
-- three-part table naming (`catalog.schema.table`) unsupported by `table` property
-- org auth bar requires M2M with secrets out of config
-
-Record results in `docs/spike-results.md` → close ADR-001.
+Record results in `docs/spike-results.md` (ADR-001 already closed; results
+validate the choice or reopen it).
 
 ## Phase 2 — RCS topology rehearsal
 
@@ -57,5 +65,9 @@ Record results in `docs/spike-results.md` → close ADR-001.
 ## Phase 3 — real AIC tenant
 
 - [ ] **DAN**: tenant access (dev env); RCS client-mode OAuth creds
-- [ ] **DAN**: Databricks service principal (M2M) + grants on the two tables
+- [ ] **DAN**: paid/standard Databricks workspace (Free Edition can't do SP
+      OAuth) — then run the full PAT → M2M checklist in design.md
+      ("Migration: PAT → OAuth M2M"): service principal, scoped OAuth
+      secret, least-privilege grants, customizer swap, token-refresh soak
+      test, PAT revoked
 - [ ] Port provisioners/mappings; ESVs for secrets; re-run acceptance set

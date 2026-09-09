@@ -11,11 +11,12 @@ tenant nearly unchanged).
   (ID, ID, datetime), one attribute set read-only. Recon + timestamp liveSync.
 - **Outbound** (IDM → Databricks): disjoint dataset, separate mapping to a
   second table.
-- **Spike question:** does the bundled DatabaseTable connector survive the
-  Databricks JDBC driver (dialect, auto-commit-only transactions, metadata
-  calls)? If yes, keep it (config-only). If it fights, fall back to
-  ScriptedSQL — both connector jars ship with IDM 8.1.1. Full trade-off
-  analysis, including authentication posture: [docs/adr-001-connector-selection.md](docs/adr-001-connector-selection.md).
+- **Connector: ScriptedSQL (decided).** ADR-001 closed 2026-09-09 on
+  authentication posture — production needs service-principal OAuth M2M with
+  secrets out of connector config, which the config-only DatabaseTable
+  connector can't deliver cleanly — plus single-provisioner topology. The
+  spike now validates ScriptedSQL against the Databricks JDBC driver. Full
+  trade-off analysis: [docs/adr-001-connector-selection.md](docs/adr-001-connector-selection.md).
 
 ## Layout
 
@@ -25,20 +26,22 @@ tenant nearly unchanged).
 | `runtime/opendj/` | no (gitignored) | Extracted DS 8.1.1 (IDM's repository) — binaries AND live instance data; `rm -rf runtime/` is the lab reset |
 | `secrets/` | no (gitignored) | Sensitive material: DS deployment ID, CA cert, Databricks PAT/env |
 | `idm-config/conf/` | yes | Provisioner + mapping JSON (`provisioner.openicf-*.json`, `sync.json`) — copied into `runtime/openidm/conf/` |
-| `idm-config/script/` | yes | Groovy scripts if the ScriptedSQL fallback is needed |
+| `idm-config/script/` | yes | ScriptedSQL Groovy scripts (one per ICF operation + customizer) |
 | `databricks/sql/` | yes | Table DDL, CDF setup, seed data |
 | `rcs/` | yes | Phase-2 Java RCS config |
 | `docs/` | yes | Notes, spike results |
 
 ## Phases
 
-1. **In-process spike** — DatabaseTable connector jar is already in
-   `runtime/openidm/connectors/`; add the Databricks JDBC jar there, configure
-   a provisioner against Databricks Free Edition, run test/recon/CRUD/liveSync.
+1. **In-process spike** — ScriptedSQL (Groovy) connector jar is already in
+   `runtime/openidm/connectors/`; Databricks JDBC jar in `openidm/lib/`;
+   author the Groovy scripts, configure one provisioner against Databricks
+   Free Edition, run test/recon/CRUD/liveSync (CDF sync token).
 2. **RCS topology rehearsal** — move connector + driver jars to a local Java
    RCS (server mode), point IDM at it.
 3. **Real AIC tenant** — flip RCS to client mode with tenant OAuth creds;
-   swap Databricks PAT for an OAuth M2M service principal.
+   swap Databricks PAT for an OAuth M2M service principal (checklist in
+   docs/design.md; needs a paid workspace — Free Edition has no SP OAuth).
 
 ## Prerequisites (per the 8.1 install guide)
 
