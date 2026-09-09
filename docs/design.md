@@ -63,10 +63,14 @@ Attribute list TBD (business decision). Enforcement:
 
 ## Authentication
 
-- **Lab:** PAT (`AuthMech=3;UID=token` semantics), value supplied via IDM
-  property substitution `&{databricks.pat}` — tracked configs never contain
-  secrets; the value lives in `resolver/boot.properties` (gitignored runtime)
-  sourced from `secrets/`.
+- **Lab:** PAT (`AuthMech=3;UID=token` semantics), scoped to the **BI Tools**
+  preset (SQL-warehouse connections — the JDBC connector's exact class; manual
+  equivalent is the `sql` API scope). Value supplied via IDM property
+  substitution `&{databricks.pat}` — tracked configs never contain secrets;
+  the value lives in `resolver/boot.properties` (gitignored runtime) sourced
+  from `secrets/`. Note: Databricks has no ICF-specific integration — its
+  integrations catalog treats JDBC clients as BI-tool-class connections, which
+  is how this connector presents.
 - **Production:** service-principal OAuth M2M
   (`AuthMech=11;Auth_Flow=1;OAuth2ClientId/Secret`). Reaching this cleanly is a
   connector-selection criterion — see ADR-001 authentication posture.

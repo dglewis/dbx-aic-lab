@@ -12,13 +12,13 @@
 - [x] ADR-001 (connector selection criteria, cited)
 
 Databricks tenant connectivity (infrastructure, not spike work):
-- [ ] **DAN**: sign up for Free Edition —
-      <https://login.databricks.com/?intent=CE_SIGN_UP> (email OTP, Google, or
-      Microsoft; provisions a serverless workspace automatically)
-- [ ] **DAN**: warehouse connection details (SQL Warehouses → warehouse →
-      **Connection details**: server hostname + HTTP path) and a PAT
-      (Settings → **Developer** → Access tokens) → `secrets/databricks.env`
-      (`DATABRICKS_HOST`, `DATABRICKS_HTTP_PATH`, `DATABRICKS_PAT`)
+- [x] **DAN**: Free Edition workspace signed up; `secrets/databricks.env`
+      created (host, HTTP path, OAuth URL, JDBC URL, workspace ID)
+- [ ] **DAN**: generate PAT → `DATABRICKS_PAT` in `secrets/databricks.env`.
+      **Scope: choose the `BI Tools` preset** — docs: "Select BI Tools for
+      tools that connect to Databricks SQL warehouses"; a JDBC client is
+      exactly that class. (Manual-scope equivalent under Other APIs: `sql`.)
+      Lifetime: 30d covers the spike; Free Edition, non-production.
 - [ ] Connectivity smoke test from the lab: standalone JDBC `SELECT 1` through
       `databricks-jdbc-2.7.3.jar` (proves network + auth + driver before any
       connector is involved)
