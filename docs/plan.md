@@ -78,8 +78,9 @@ Phase 1 complete (2026-09-09).**
       connector runs as SP `idm-connector-lab` via CustomizerScript +
       encrypted `customSensitiveConfiguration`; IDM holds no PAT
       (boot.properties purged); acceptance 15/15 as the SP, confirmed by
-      Databricks query history. Remaining: token-lifetime soak past 1h
-      (running; `databricks/soak-test.sh`), optional workspace PAT
-      revocation once admin tooling no longer needs it
+      Databricks query history. Token-lifetime soak: 9/9 probes OK across
+      80 min, crossing the 1-hour token boundary (evidence:
+      `docs/evidence/soak-20260909-152501.log`). Remaining: optional
+      workspace PAT revocation once admin tooling no longer needs it
 - [ ] Port provisioners/mappings; ESVs for secrets; re-run acceptance set
       (tenant workspace: recreate SP + grants there per the same checklist)

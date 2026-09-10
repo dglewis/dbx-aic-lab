@@ -112,9 +112,10 @@ lab for SP `idm-connector-lab` (client ID in `secrets/databricks.env`).
    `AuthMech=3;UID=token;PWD=<pat>`). ✔ lab — acceptance 15/15 as the SP,
    confirmed by Databricks query history
 6. **Validate token refresh over a held-open pool:** pool `maxAge=3000000`
-   (50 min) recycles connections inside the 1-hour token window; soak test
-   past the boundary (`databricks/soak-test.sh`, evidence under
-   `docs/evidence/`). Note: after an IDM restart against a cold serverless
+   (50 min) recycles connections inside the 1-hour token window. ✔ lab —
+   soak 9/9 over 80 min across the token boundary
+   (`databricks/soak-test.sh`; evidence under `docs/evidence/`).
+   Note: after an IDM restart against a cold serverless
    warehouse, the first M2M connect (token exchange + warehouse wake) can
    make early operations fail transiently until the pool establishes —
    self-heals; consider warm-up/retry in production.

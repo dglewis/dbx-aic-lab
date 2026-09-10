@@ -172,7 +172,9 @@ plain script body with `configuration` bound (the scripted-REST
 page omits customizer/customSensitiveConfiguration, but the shipped
 `ScriptedSQLConfiguration` inherits both (javap + live probe).
 
-Open: 80-minute token-lifetime soak (`databricks/soak-test.sh`, pool
-`maxAge=50min` vs 1-hour tokens) — running; results land in
-`docs/evidence/soak-*.log`. Workspace PAT revocation deferred while admin
-tooling still uses it.
+**Token-lifetime soak: 9/9 OK** —
+[`evidence/soak-20260909-152501.log`](evidence/soak-20260909-152501.log):
+probes every 10 min for 80 min (23:25→00:45 UTC), crossing the 1-hour
+token boundary with zero failures; pool `maxAge=50min` recycling holds.
+Migration checklist complete except optional workspace PAT revocation
+(deferred while admin tooling still uses it).
