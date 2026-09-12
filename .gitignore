@@ -10,7 +10,8 @@ runtime/
 
 # Secrets — Databricks PATs, RCS credentials. Never commit.
 *.env
-secrets/
+secrets/*
+!secrets/databricks.env.example
 
 # OS noise
 .DS_Store
