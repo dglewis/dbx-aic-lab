@@ -15,3 +15,6 @@ secrets/*
 
 # OS noise
 .DS_Store
+
+# Agent-harness local state (machine-specific paths, permission grants)
+.claude/settings.local.json
