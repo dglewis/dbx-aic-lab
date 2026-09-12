@@ -1,22 +1,69 @@
-# db-conn — Databricks ⇄ PingAIC connector experiment
+# db-conn — Databricks ⇄ PingAIC connector lab
 
-Workspace for prototyping a bidirectional ICF connector between Databricks and
-PingOne Advanced Identity Cloud, mocked locally with self-hosted PingIDM 8.1.1
-(AIC's sync engine is IDM, so mappings/provisioner configs transfer to the
-tenant nearly unchanged).
+A working prototype of a **bidirectional ICF connector between Databricks and
+PingOne Advanced Identity Cloud**, built and validated on a local lab:
+self-hosted PingIDM 8.1.1 stands in for AIC (AIC's sync engine *is* IDM, so
+provisioner and mapping config ports to a tenant nearly unchanged), and a
+Databricks Free Edition workspace is the real target — driver compatibility
+was the whole question, so Databricks is never mocked.
 
-## Design under test
+> **Status: spike/prototype, not production.** Phase 1 (in-process connector)
+> is complete and evidence-backed — CRUD, paging, filtered queries, and
+> CDF-based liveSync including delete detection, authenticated as a
+> service principal via OAuth M2M. It has not been hardened, load-tested, or
+> security-reviewed. Copy patterns, not guarantees.
 
-- **Inbound** (Databricks → IDM): full CRUD on a business-data table
-  (ID, ID, datetime), one attribute set read-only. Recon + timestamp liveSync.
-- **Outbound** (IDM → Databricks): disjoint dataset, separate mapping to a
-  second table.
-- **Connector: ScriptedSQL (decided).** ADR-001 closed 2026-09-09 on
-  authentication posture — production needs service-principal OAuth M2M with
-  secrets out of connector config, which the config-only DatabaseTable
-  connector can't deliver cleanly — plus single-provisioner topology. The
-  spike now validates ScriptedSQL against the Databricks JDBC driver. Full
-  trade-off analysis: [docs/adr-001-connector-selection.md](docs/adr-001-connector-selection.md).
+![Architecture](docs/architecture.svg)
+
+## What's decided, and why
+
+- **Connector: ScriptedSQL (Groovy)** over the config-only DatabaseTable
+  connector — decided by authentication posture (production needs
+  service-principal OAuth M2M with secrets kept out of plaintext config,
+  which only the scripted connector reaches cleanly) plus single-provisioner
+  topology and CDF delete detection. Full trade-off analysis with citations:
+  [ADR-001](docs/adr-001-connector-selection.md).
+- **Sync: Delta Change Data Feed** — the sync token is the Delta commit
+  version, so liveSync sees inserts, updates, **and deletes**.
+- **Auth: OAuth M2M as a service principal** — assembled at connector init
+  by a customizer script from an IDM-encrypted config property; works on
+  Databricks **Free Edition** (a commonly repeated claim that it doesn't was
+  disproven empirically — see [spike results](docs/spike-results.md)).
+
+The documentation trail, in reading order:
+[ADR-001](docs/adr-001-connector-selection.md) (why this connector) →
+[design](docs/design.md) (the as-built system) →
+[plan](docs/plan.md) (phases and status) →
+[spike results](docs/spike-results.md) (dated findings, including retracted
+ones) → [`evidence/`](evidence/) (raw request/response logs from every test
+run, tied to commits).
+
+## What you need
+
+- A **Ping Identity Backstage account** — `IDM-8.1.1.zip` and `DS-8.1.1.zip`
+  are proprietary, **not included in this repo and not redistributable**
+  (see [NOTICE](NOTICE.md)); download them into the repo root yourself.
+- A **Databricks Free Edition** workspace (free signup) with a SQL warehouse.
+- macOS/Linux with Homebrew-installable **JDK 21 and JDK 25** (split-JDK
+  requirement is real — see prerequisites below) and **Node 18+** for the
+  test suite.
+
+## Quickstart
+
+```bash
+# 1. Vendor artifacts (Backstage) -> repo root: IDM-8.1.1.zip, DS-8.1.1.zip
+# 2. Stand up DS + IDM: follow the Runbook section below (one-time setup)
+# 3. Configure credentials:
+cp secrets/databricks.env.example secrets/databricks.env   # then fill it in
+# 4. Create the lab tables (CDF on, seed rows):
+databricks/apply-sql.sh databricks/sql/001_lab_tables.sql
+# 5. Deploy connector config + scripts into the runtime:
+idm-config/deploy.sh
+# 6. Prove it works (16 checks; writes evidence/ + JUnit XML):
+cd test && npm install && npm test
+```
+
+The suite needs the live lab — it is a manual gate, not a CI job.
 
 ## Layout
 
@@ -28,8 +75,11 @@ tenant nearly unchanged).
 | `idm-config/conf/` | yes | Provisioner + mapping JSON (`provisioner.openicf-*.json`, `sync.json`) — copied into `runtime/openidm/conf/` |
 | `idm-config/script/` | yes | ScriptedSQL Groovy scripts (one per ICF operation + customizer) |
 | `databricks/` | yes | Lab tooling: `smoke-test.sh` (JDBC connectivity), `apply-sql.sh` + `JdbcRunner.java` (run SQL over the driver), `sql/` (DDL, CDF setup, seed data) |
+| `test/` | yes | Node/Vitest acceptance suite (`cd test && npm install && npm test`) — IDM REST assertions + Databricks-native out-of-band checks over the SQL Statement Execution REST API; profile-driven (`PROFILE=lab\|tenant`); writes `evidence/acceptance-node-*.log` + JUnit XML |
 | `rcs/` | yes | Phase-2 Java RCS config |
-| `docs/` | yes | Notes, spike results |
+| `docs/` | yes | ADR, design, plan, spike results — the narrative record |
+| `evidence/` | yes | Raw request/response logs from acceptance and soak runs, headers tied to commits |
+| `secrets/databricks.env.example` | yes | Credential template — the only tracked file under `secrets/` |
 
 ## Phases
 
