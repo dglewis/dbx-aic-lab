@@ -1,0 +1,18 @@
+{
+  "comment": "Phase-3 stub: AIC tenant via RCS client mode. Fill base with the tenant origin; bearer token from the named env var (AIC service-account OAuth). Same tests, different profile: PROFILE=tenant npm test.",
+  "idm": {
+    "base": "https://<tenant>.forgeblocks.com/openidm",
+    "auth": { "type": "bearer", "tokenEnvKey": "AIC_ACCESS_TOKEN" },
+    "insecureTLS": false
+  },
+  "databricks": {
+    "hostEnvKey": "DATABRICKS_HOST",
+    "tokenEnvKey": "DATABRICKS_PAT",
+    "warehouseIdFromHttpPathEnvKey": "DATABRICKS_HTTP_PATH"
+  },
+  "system": "databricks",
+  "tables": {
+    "inbound": "workspace.idm_lab.business_records",
+    "outbound": "workspace.idm_lab.outbound_records"
+  }
+}

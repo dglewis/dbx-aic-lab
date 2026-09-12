@@ -1,0 +1,18 @@
+{
+  "comment": "Local lab: self-hosted IDM 8.1.1, Databricks Free Edition. Non-secret values only — secrets resolve from ../secrets/databricks.env by key name.",
+  "idm": {
+    "base": "https://localhost:8443/openidm",
+    "auth": { "type": "basic", "username": "openidm-admin", "password": "openidm-admin" },
+    "insecureTLS": true
+  },
+  "databricks": {
+    "hostEnvKey": "DATABRICKS_HOST",
+    "tokenEnvKey": "DATABRICKS_PAT",
+    "warehouseIdFromHttpPathEnvKey": "DATABRICKS_HTTP_PATH"
+  },
+  "system": "databricks",
+  "tables": {
+    "inbound": "workspace.idm_lab.business_records",
+    "outbound": "workspace.idm_lab.outbound_records"
+  }
+}

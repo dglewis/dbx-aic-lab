@@ -65,6 +65,15 @@ Spike execution (acceptance criteria — runner: `idm-config/acceptance-test.sh`
 **Results recorded: `docs/spike-results.md` — 14/14 PASS, ADR-001 validated.
 Phase 1 complete (2026-09-09).**
 
+Test harness (2026-09-09): acceptance suite ported to Node/Vitest in
+`test/` — 15/15 on first run. IDM REST assertions; out-of-band checks via
+the Databricks SQL Statement Execution REST API (vendor-native, independent
+of the connector's JDBC path); env profiles `lab`/`tenant` so the same
+suite runs against AIC in phase 3; evidence to `evidence/`, JUnit XML
+for CI. `idm-config/acceptance-test.sh` retained as the zero-dependency
+smoke fallback; `databricks/smoke-test.sh` stays the same-driver
+diagnostic.
+
 ## Phase 2 — RCS topology rehearsal
 
 - [ ] Download Java RCS (Backstage) → `rcs/`; move connector + driver jars
@@ -80,7 +89,7 @@ Phase 1 complete (2026-09-09).**
       (boot.properties purged); acceptance 15/15 as the SP, confirmed by
       Databricks query history. Token-lifetime soak: 9/9 probes OK across
       80 min, crossing the 1-hour token boundary (evidence:
-      `docs/evidence/soak-20260909-152501.log`). Remaining: optional
+      `evidence/soak-20260909-152501.log`). Remaining: optional
       workspace PAT revocation once admin tooling no longer needs it
 - [ ] Port provisioners/mappings; ESVs for secrets; re-run acceptance set
       (tenant workspace: recreate SP + grants there per the same checklist)

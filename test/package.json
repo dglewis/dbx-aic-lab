@@ -1,0 +1,12 @@
+{
+  "name": "db-conn-tests",
+  "private": true,
+  "type": "module",
+  "description": "Acceptance test suite for the Databricks ScriptedSQL connector. IDM REST assertions + Databricks-native out-of-band verification (SQL Statement Execution REST API). Profile-driven: PROFILE=lab|rcs|tenant.",
+  "scripts": {
+    "test": "vitest run --reporter=default --reporter=junit --outputFile=reports/junit.xml"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
+  }
+}
