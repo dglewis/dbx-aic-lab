@@ -9,7 +9,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 COUNT="${1:-9}"; INTERVAL="${2:-600}"
-EV="docs/evidence/soak-$(date +%Y%m%d-%H%M%S).log"
+EV="evidence/soak-$(date +%Y%m%d-%H%M%S).log"
 echo "# M2M token-lifetime soak: $COUNT probes @ ${INTERVAL}s ($(date -u +%FT%TZ))" | tee "$EV"
 
 fails=0

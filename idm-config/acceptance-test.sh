@@ -5,7 +5,7 @@
 # Requires: DS + IDM running, idm-config/deploy.sh applied, valid PAT.
 #
 # Every raw response is appended to a timestamped evidence log under
-# docs/evidence/ — the script source is the record of the exact commands,
+# evidence/ — the script source is the record of the exact commands,
 # the log is the record of what the systems actually returned.
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -15,7 +15,7 @@ AUTH="-u openidm-admin:openidm-admin"
 CURL="curl -sk $AUTH"
 SQL=databricks/apply-sql.sh
 
-EV_DIR=docs/evidence
+EV_DIR=evidence
 mkdir -p "$EV_DIR"
 EV="$EV_DIR/acceptance-$(date +%Y%m%d-%H%M%S).log"
 {
