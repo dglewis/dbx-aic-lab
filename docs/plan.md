@@ -29,8 +29,8 @@ Databricks tenant connectivity (infrastructure, not spike work):
 > ADR-001 closed 2026-09-09: **ScriptedSQL** selected on auth posture (M2M
 > with secrets out of config) + config topology, without spiking
 > DatabaseTable. This phase validates ScriptedSQL against the Databricks
-> driver. Lab auth is a scoped PAT (Free Edition can't do SP OAuth); the
-> M2M migration checklist lives in design.md → "Migration: PAT → OAuth M2M".
+> driver. Auth is OAuth M2M ([ADR-002](adr-002-databricks-authentication.md));
+> the setup checklist lives in design.md → "Setting up OAuth M2M".
 
 Setup:
 - [x] Run `databricks/sql/001_lab_tables.sql` (tables + CDF + seed rows) —
@@ -74,21 +74,72 @@ for CI. `idm-config/acceptance-test.sh` retained as the zero-dependency
 smoke fallback; `databricks/smoke-test.sh` stays the same-driver
 diagnostic.
 
-## Phase 2 — RCS topology rehearsal
+## Phase 2 — RCS, plain JVM then Kubernetes
 
-- [ ] Download Java RCS (Backstage) → `rcs/`; move connector + driver jars
-- [ ] RCS server mode; IDM `provisioner.openicf.connectorinfoprovider.json` → remote
-- [ ] Re-run phase-1 acceptance set unchanged
+Gated: each topology (design.md → "Topology") must pass the unchanged
+acceptance suite before the next adds a layer, so a failure can only come
+from the layer just introduced. Earlier topologies stay runnable — the lab
+keeps both the plain-JVM and the Kubernetes path. Research, open questions
+and validation detail: [rcs-kubernetes-research.md](rcs-kubernetes-research.md).
+Development friction on each path goes in
+[k8s-dev-experience.md](k8s-dev-experience.md).
+
+G0 — baseline re-established (T0) ✅ 2026-09-29:
+- [x] SQL warehouse back up (was refusing to start with `400 Cannot create
+      the resource`)
+- [x] Suite's out-of-band checks and `JdbcRunner` (`apply-sql.sh`,
+      `smoke-test.sh`) authenticate as the service principal, PAT optional
+      ([ADR-002](adr-002-databricks-authentication.md)); unit-tested
+      (`npm run test:unit`, 12 checks, no network/secrets)
+- [x] IDM restarted (cleared the stale-classloader `NoClassDefFoundError`),
+      `deploy.sh`, `npm test` **16/16** — no PAT used anywhere
+
+G1 — Java RCS on the host JVM, server mode (T1):
+- [ ] **DAN**: RCS 1.5.20.36 from Backstage (or extracted from the official
+      image) → `rcs/openicf/` (gitignored); JDK 21
+- [ ] `rcs/` tooling (tracked, our own files): properties, deploy script
+      placing driver → `openicf/lib/`, scripts → `openicf/scripts/databricks/`
+- [ ] Tracked `provisioner.openicf.connectorinfoprovider.json`;
+      provisioner `connectorHostRef` + RCS-side `scriptRoots`
+- [ ] Prove the connector runs on RCS (remove its jars from the IDM runtime;
+      customizer log line appears in RCS logs; SP in query history)
+- [ ] `PROFILE=rcs` → 16/16; negatives (wrong key, RCS kill/recovery,
+      script-edit reload); TLS on; token-boundary soak
+
+G2 — Java RCS on the host JVM, client mode (T2):
+- [ ] IDM `remoteConnectorClients`; RCS dials `wss://localhost:8443/openicf`
+- [ ] `PROFILE=rcs-client` → 16/16; negatives
+
+G3 — official RCS image, one pod in minikube (T3):
+- [ ] Install `vfkit`; delete the stale docker-driver minikube profile;
+      cluster per README runbook (verify against minikube docs first)
+- [ ] Dockerfile `FROM gcr.io/forgerock-io/rcs:1.5.20.36` + our files;
+      `minikube image build`; manifests written from scratch
+- [ ] Own `logback.xml` so connector/Groovy logs reach stdout
+- [ ] `PROFILE=k8s` → 16/16
+
+G4 — Kubernetes contract (T3, 2 replicas):
+- [ ] StatefulSet, Secrets as files, probes, PodDisruptionBudget, IDM
+      failover group
+- [ ] Pod kill mid-recon/liveSync: error surfaced, failover time, sync-token
+      consistency
+- [ ] Record results; decide StatefulSet/naming/algorithm → ADR-003
 
 ## Phase 3 — real AIC tenant
 
 - [ ] **DAN**: tenant access (dev env); RCS client-mode OAuth creds
-- [x] PAT → M2M migration in the lab (design.md checklist, 2026-09-09):
+- [x] OAuth M2M in the lab (design.md → "Setting up OAuth M2M", 2026-09-09):
       connector runs as SP `idm-connector-lab` via CustomizerScript +
       encrypted `customSensitiveConfiguration`; IDM holds no PAT
       (boot.properties purged); acceptance 15/15 as the SP, confirmed by
       Databricks query history. Token-lifetime soak: 9/9 probes OK across
-      80 min, crossing the 1-hour token boundary. Remaining: optional
-      workspace PAT revocation once admin tooling no longer needs it
+      80 min, crossing the 1-hour token boundary
 - [ ] Port provisioners/mappings; ESVs for secrets; re-run acceptance set
       (tenant workspace: recreate SP + grants there per the same checklist)
+- [ ] Managed Kubernetes dev cluster on the client's cloud (provider-neutral
+      design; per-provider overlay for secret store + pod identity — see
+      design.md → "Cloud-provider neutrality"); private registry, amd64 image
+- [ ] Register RCS names + dedicated OAuth clients and access rules in AIC;
+      `PROFILE=tenant` → 16/16
+- [ ] Websocket idle survival through the provider's egress (soak)
+- [ ] Ask Ping: redistribution terms for a derived RCS image

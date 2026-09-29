@@ -185,3 +185,43 @@ cold-start 404s after a deploy. Result: **16/16**.
 Also this session: personal identifiers scrubbed from docs;
 `NOTICE.md`, credential template, and agent guide added. Run logs now stay
 local under `test/runs/` (gitignored) rather than being committed.
+
+## 2026-09-29 — baseline blocked: warehouse won't start, PAT invalid
+
+Re-establishing the baseline before Phase 2 (run log
+`acceptance-node-2026-09-29T16-34-24.log`, commit `609b961`): `deploy.sh` +
+`npm test` → readiness gate timed out after 180 s, **0/16 run**. Isolated
+below the connector — not a connector or config fault:
+
+- **Warehouse refuses to start.** SP OAuth token exchange succeeds; the
+  warehouse is `STOPPED`, and every start attempt — JDBC `OpenSession` from
+  the connector and a `SELECT 1` via the SQL Statement API as the SP —
+  returns `400 BAD_REQUEST: Cannot create the resource, please try again
+  later`. Databricks-side compute/quota refusal; the SP (`CAN_USE` only)
+  cannot see warehouse health details.
+- **PAT invalid.** `databricks/smoke-test.sh` and SCIM `/Me` → `403 Invalid
+  access token`. The suite's out-of-band checks use this PAT, so they would
+  fail even with the warehouse up.
+- **Workspace intact.** Read-only UC/REST inspection as the SP: same
+  workspace ID as `secrets/databricks.env`; catalog `workspace`, schema
+  `idm_lab`, both tables present with CDF enabled; SP grants in place.
+  (Owner's UI appeared empty — suspected wrong workspace/account in the
+  browser; unconfirmed.)
+- Secondary: a scheduler thread logged `NoClassDefFoundError:
+  org/forgerock/json/resource/ResourceException` after the hot redeploy
+  (IDM up ~17 days). Suspected stale classloader — recheck after restart.
+
+Unblock is owner-side (plan.md → G0).
+
+## 2026-09-29 — baseline restored: 16/16, no PAT anywhere
+
+Run log `acceptance-node-2026-09-29T20-12-33.log`. The warehouse accepted
+connections again; the out-of-band checks and `JdbcRunner`
+(`apply-sql.sh`/`smoke-test.sh`) now authenticate as the service principal
+via OAuth M2M, with the PAT only as a fallback (ADR-002). The stale PAT
+still present in the local env file was never used — it would have 403'd.
+`smoke-test.sh` → SMOKE-OK with `current_user()` = the SP. First
+`npm test` still failed its readiness gate on the stale-classloader
+`NoClassDefFoundError`; after an IDM restart, **16/16**. Run log checked:
+no client secret, token, token endpoint, host or warehouse ID. New offline
+unit tests: `npm run test:unit`, 12/12.

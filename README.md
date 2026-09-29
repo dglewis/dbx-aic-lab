@@ -7,11 +7,25 @@ provisioner and mapping config ports to a tenant nearly unchanged), and a
 Databricks Free Edition workspace is the real target — driver compatibility
 was the whole question, so Databricks is never mocked.
 
+The lab runs the same connector **two ways, kept side by side on purpose**:
+
+- **Plain JVM** — the connector in-process in IDM, or hosted by a Java
+  Remote Connector Server (RCS) running directly on the machine.
+- **Kubernetes** — the RCS as pods in a local cluster (minikube), rehearsing
+  a managed-Kubernetes deployment on any major cloud.
+
+Neither path replaces the other. One acceptance suite runs against every
+topology, so results are comparable, and the development friction of each
+is logged in [k8s-dev-experience.md](docs/k8s-dev-experience.md). The
+connector-vs-RCS distinction, how each scales, and how RCS availability
+overlays Kubernetes are in [design.md](docs/design.md#connector-vs-rcs).
+
 > **Status: spike/prototype, not production.** Phase 1 (in-process connector)
 > is complete and evidence-backed — CRUD, paging, filtered queries, and
 > CDF-based liveSync including delete detection, authenticated as a
-> service principal via OAuth M2M. It has not been hardened, load-tested, or
-> security-reviewed. Copy patterns, not guarantees.
+> service principal via OAuth M2M. Phase 2 (RCS on the plain JVM, then on
+> Kubernetes) is researched and not yet built. Nothing here has been
+> hardened, load-tested, or security-reviewed. Copy patterns, not guarantees.
 
 ![Architecture](docs/architecture.svg)
 
@@ -28,24 +42,56 @@ was the whole question, so Databricks is never mocked.
 - **Auth: OAuth M2M as a service principal** — assembled at connector init
   by a customizer script from an IDM-encrypted config property; works on
   Databricks **Free Edition** (a commonly repeated claim that it doesn't was
-  disproven empirically — see [spike results](docs/spike-results.md)).
+  disproven empirically — see [spike results](docs/spike-results.md)). A PAT
+  is supported as an optional alternative, never required:
+  [ADR-002](docs/adr-002-databricks-authentication.md).
 
 The documentation trail, in reading order:
 [ADR-001](docs/adr-001-connector-selection.md) (why this connector) →
+[ADR-002](docs/adr-002-databricks-authentication.md) (why OAuth M2M) →
 [design](docs/design.md) (the as-built system) →
 [plan](docs/plan.md) (phases and status) →
 [spike results](docs/spike-results.md) (dated findings, including retracted
-ones).
+ones). Phase-2 background: [RCS and Kubernetes research](docs/rcs-kubernetes-research.md).
 
 ## What you need
 
-- A **Ping Identity Backstage account** — `IDM-8.1.1.zip` and `DS-8.1.1.zip`
-  are proprietary, **not included in this repo and not redistributable**
-  (see [NOTICE](NOTICE.md)); download them into the repo root yourself.
-- A **Databricks Free Edition** workspace (free signup) with a SQL warehouse.
-- macOS/Linux with Homebrew-installable **JDK 21 and JDK 25** (split-JDK
-  requirement is real — see prerequisites below) and **Node 18+** for the
-  test suite.
+Versions are pinned here only; other docs link back. Licensing and
+redistribution for each vendor artifact: [NOTICE](NOTICE.md).
+
+**Both paths**
+
+| Dependency | Version | Notes |
+|---|---|---|
+| Ping Identity Backstage account | — | PingIDM/PingDS/RCS are proprietary, **not in this repo, not redistributable** |
+| PingIDM | 8.1.1 (`IDM-8.1.1.zip`, repo root) | Sync engine standing in for AIC; ships the ScriptedSQL connector |
+| PingDS | 8.1.1 (`DS-8.1.1.zip`, repo root) | IDM's required repository |
+| Databricks workspace | Free Edition works | SQL warehouse, Unity Catalog, a service principal with an OAuth secret (OAuth M2M; a PAT is optional — [ADR-002](docs/adr-002-databricks-authentication.md)) |
+| Databricks JDBC driver | `databricks-jdbc` 2.7.3 (Maven Central, Apache-2.0) | Fetched, never committed |
+| JDK 21 / JDK 25 | Homebrew `openjdk@21`, `openjdk@25` | IDM + RCS need 21; DS needs 25 (see prerequisites) |
+| Node.js | 18+ | Acceptance suite (Vitest) |
+| Maven | any | One-time driver fetch |
+
+**Plain-JVM RCS path (phase 2)**
+
+| Dependency | Version | Notes |
+|---|---|---|
+| Java RCS | 1.5.20.36 (Backstage zip) | Extracted to `rcs/openicf/` (gitignored); JDK 21 |
+
+**Kubernetes path (phase 2)**
+
+| Dependency | Version | Notes |
+|---|---|---|
+| RCS image | `gcr.io/forgerock-io/rcs:1.5.20.36` (amd64 + arm64) | Public pull; use requires a Ping license. Our Dockerfile only adds our own files |
+| minikube | 1.38+ | Local cluster; `vfkit` driver on macOS (no Docker needed) |
+| vfkit | Homebrew | macOS hypervisor driver for minikube |
+| Kubernetes | 1.35 | Pin a minor your target provider supports |
+| kubectl, helm | kubectl ±1 minor of the cluster; helm 4 | |
+
+**Phase 3 (real tenant)**: a PingOne AIC tenant, and any managed Kubernetes
+(AKS, EKS or GKE) with a private registry, a cloud secret store and workload
+identity — provider-neutral design in
+[design.md](docs/design.md#cloud-provider-neutrality).
 
 ## Quickstart
 
@@ -54,12 +100,14 @@ ones).
 # 2. Stand up DS + IDM: follow the Runbook section below (one-time setup)
 # 3. Configure credentials:
 cp secrets/databricks.env.example secrets/databricks.env   # then fill it in
-# 4. Create the lab tables (CDF on, seed rows):
+# 4. Create the lab tables (CDF on, seed rows) — authenticates as the
+#    service principal (OAuth M2M):
 databricks/apply-sql.sh databricks/sql/001_lab_tables.sql
 # 5. Deploy connector config + scripts into the runtime:
 idm-config/deploy.sh
 # 6. Prove it works (16 checks; writes test/runs/ + JUnit XML):
 cd test && npm install && npm test
+#    Offline unit tests (no lab, network or secrets): npm run test:unit
 ```
 
 The suite needs the live lab — it is a manual gate, not a CI job.
@@ -70,12 +118,13 @@ The suite needs the live lab — it is a manual gate, not a CI job.
 |---|---|---|
 | `runtime/openidm/` | no (gitignored) | Extracted IDM 8.1.1 — rebuild via `unzip IDM-8.1.1.zip -d runtime/` |
 | `runtime/opendj/` | no (gitignored) | Extracted DS 8.1.1 (IDM's repository) — binaries AND live instance data; `rm -rf runtime/` is the lab reset |
-| `secrets/` | no (gitignored) | Sensitive material: DS deployment ID, CA cert, Databricks PAT/env |
+| `secrets/` | no (gitignored) | Sensitive material: DS deployment ID, CA cert, Databricks credentials (`databricks.env`) |
 | `idm-config/conf/` | yes | Provisioner + mapping JSON (`provisioner.openicf-*.json`, `sync.json`) — copied into `runtime/openidm/conf/` |
 | `idm-config/script/` | yes | ScriptedSQL Groovy scripts (one per ICF operation + customizer) |
 | `databricks/` | yes | Lab tooling: `smoke-test.sh` (JDBC connectivity), `apply-sql.sh` + `JdbcRunner.java` (run SQL over the driver), `sql/` (DDL, CDF setup, seed data) |
-| `test/` | yes | Node/Vitest acceptance suite (`cd test && npm install && npm test`) — IDM REST assertions + Databricks-native out-of-band checks over the SQL Statement Execution REST API; profile-driven (`PROFILE=lab\|tenant`); writes `test/runs/acceptance-node-*.log` + JUnit XML |
-| `rcs/` | yes | Phase-2 Java RCS config |
+| `test/` | yes | Node/Vitest acceptance suite (`cd test && npm install && npm test`) — IDM REST assertions + Databricks-native out-of-band checks over the SQL Statement Execution REST API; profile-driven (`PROFILE=lab\|tenant`, more per topology as phase 2 lands); writes `test/runs/acceptance-node-*.log` + JUnit XML. `test/unit/`: offline unit tests (`npm run test:unit`) |
+| `rcs/` | yes | Phase-2 RCS files we author (properties, deploy script, Dockerfile, manifests) |
+| `rcs/openicf/` | no (gitignored) | Extracted Java RCS distribution (proprietary) |
 | `docs/` | yes | ADR, design, plan, spike results — the narrative record |
 | `test/runs/` | no (gitignored) | Local HTTP request/response logs, one per acceptance/soak run |
 | `secrets/databricks.env.example` | yes | Credential template — the only tracked file under `secrets/` |
@@ -86,12 +135,16 @@ The suite needs the live lab — it is a manual gate, not a CI job.
    `runtime/openidm/connectors/`; Databricks JDBC jar in `openidm/lib/`;
    author the Groovy scripts, configure one provisioner against Databricks
    Free Edition, run test/recon/CRUD/liveSync (CDF sync token).
-2. **RCS topology rehearsal** — move connector + driver jars to a local Java
-   RCS (server mode), point IDM at it.
-3. **Real AIC tenant** — flip RCS to client mode with tenant OAuth creds.
-   Databricks auth is already service-principal OAuth M2M (migrated in the
-   lab — Free Edition supports SP OAuth after all; see docs/design.md
-   checklist): recreate SP + grants in the tenant workspace, secrets to ESVs.
+2. **RCS, plain JVM then Kubernetes** — gated, one new layer per step, each
+   must pass the unchanged suite: RCS on the host in server mode → client
+   mode → one pod in minikube → the Kubernetes contract (two replicas,
+   failover, pod kill). Earlier steps stay runnable. Gates:
+   [plan.md](docs/plan.md).
+3. **Real AIC tenant** — RCS pods in a managed Kubernetes cluster (any
+   major cloud) in client mode against the tenant. Databricks auth is
+   already service-principal OAuth M2M (migrated in the lab — Free Edition
+   supports SP OAuth after all; see docs/design.md checklist): recreate SP +
+   grants in the tenant workspace, secrets to ESVs.
 
 ## Prerequisites (per the 8.1 install guide)
 
@@ -165,7 +218,23 @@ mvn dependency:copy -Dartifact=com.databricks:databricks-jdbc:2.7.3 \
   -DoutputDirectory=runtime/openidm/lib/
 ```
 
-Secrets (Databricks PAT, warehouse HTTP path) live in untracked `*.env` /
+### Kubernetes path (phase 2 — not yet run)
+
+Planned setup for macOS. Check each command against the minikube docs for
+the installed version before running (hard rule: version-exact docs first);
+this block becomes as-run once gate G3 in [plan.md](docs/plan.md) passes.
+
+```bash
+brew install vfkit                      # Apple Virtualization.framework driver
+minikube delete                         # only if an old docker-driver profile exists
+minikube start -p rcs --driver=vfkit --container-runtime=containerd \
+  --kubernetes-version=v1.35.0 --cpus=2 --memory=4g
+# Pods reach host services (IDM on 8443) via host.minikube.internal —
+# the host service must listen on all interfaces. On macOS 15+, the
+# terminal needs Local Network permission.
+```
+
+Secrets (service-principal OAuth credentials, optional PAT, warehouse HTTP path) live in untracked `*.env` /
 `secrets/` — see `.gitignore`. Sync token format, if timestamp-based:
 `yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'` (UTC, full microseconds, column type
 `TIMESTAMP` not `TIMESTAMP_NTZ`).

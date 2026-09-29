@@ -6,8 +6,12 @@ Context for AI coding agents (Claude Code, Cursor, etc.) working in this repo.
 
 A spike lab proving a bidirectional ICF connector between Databricks and
 PingIDM/AIC. Read in this order before changing anything:
-`docs/adr-001-connector-selection.md` → `docs/design.md` → `docs/plan.md` →
-`docs/spike-results.md`. Phase 1 is complete; Phase 2 (RCS topology) is next.
+`docs/adr-001-connector-selection.md` → `docs/adr-002-databricks-authentication.md` →
+`docs/design.md` → `docs/plan.md` →
+`docs/spike-results.md`. Phase 1 is complete; Phase 2 (RCS on the plain
+JVM, then Kubernetes — gated, see plan.md) is next, with background in
+`docs/rcs-kubernetes-research.md`. The repo keeps **both** paths runnable
+on purpose; never retire the plain-JVM path in favour of Kubernetes.
 
 ## Hard rules
 
@@ -26,7 +30,11 @@ PingIDM/AIC. Read in this order before changing anything:
    truth; do not hand-edit the runtime copies except for throwaway probes.
 4. **Ping vendor code stays out.** No copying from `runtime/openidm/samples/`
    (proprietary license headers) — scripts are written clean-room against the
-   documented toolkit API. See `NOTICE.md`.
+   documented toolkit API. The same applies to the RCS distribution/image
+   (`rcs/openicf/`, `gcr.io/forgerock-io/rcs`): its start scripts and
+   `logback.xml` are commercial-licensed, so our properties, logging config,
+   entrypoint and Kubernetes manifests are written from the public docs.
+   ForgeOps (CDDL) is a reference only. See `NOTICE.md`.
 5. **Commits: only when the user says so.** Atomic (one logical change),
    plain imperative subject lines, no conventional-commit prefixes.
 6. **Evidence discipline:** every acceptance/soak run writes a raw
@@ -60,6 +68,7 @@ PingIDM/AIC. Read in this order before changing anything:
 curl -k -u openidm-admin:openidm-admin https://localhost:8443/openidm/info/ping
 idm-config/deploy.sh                  # push tracked config to runtime
 cd test && npm test                   # 16 checks; writes test/runs/ + JUnit XML
+npm run test:unit                     # offline unit tests (auth selection); run from test/
 ```
 
 `idm-config/acceptance-test.sh` is the zero-dependency smoke fallback;
