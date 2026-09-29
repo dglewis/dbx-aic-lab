@@ -1,5 +1,5 @@
 // fetch wrapper with evidence capture: every request/response pair is
-// appended to evidence/acceptance-node-<timestamp>.log — same auditable-proof
+// appended to test/runs/acceptance-node-<timestamp>.log — same auditable-proof
 // convention as the earlier bash runner, produced from the same code path
 // the assertions use. Authorization headers are never logged.
 import { appendFileSync, mkdirSync } from 'node:fs'
@@ -16,8 +16,8 @@ const REDACTIONS = [
 const scrub = (t) => REDACTIONS.reduce((s, [v, p]) => (v ? s.split(v).join(p) : s), t)
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-export const evidencePath = join(repoRoot, 'evidence', `acceptance-node-${stamp}.log`)
-mkdirSync(join(repoRoot, 'evidence'), { recursive: true })
+export const evidencePath = join(repoRoot, 'test', 'runs', `acceptance-node-${stamp}.log`)
+mkdirSync(join(repoRoot, 'test', 'runs'), { recursive: true })
 
 let commit = 'unknown'
 try { commit = execSync('git rev-parse HEAD', { cwd: repoRoot }).toString().trim() } catch {}

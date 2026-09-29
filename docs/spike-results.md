@@ -47,14 +47,10 @@ selected ScriptedSQL; these results validate the choice or reopen it.
 
 ## 2026-09-09 (fresh PAT) — ACCEPTANCE RUN: 14/14 PASS
 
-**Evidence:** every raw REST/SQL response of the (re-)run is captured in
-[`evidence/acceptance-20260909-143900.log`](../evidence/acceptance-20260909-143900.log)
-(15/15 on the evidenced re-run — the read-only enforcement check was added
-as its own step). The runner script *is* the record of the exact commands;
-the log records what IDM and Databricks actually returned, timestamped,
-with the repo commit noted in its header. Reproduce anytime with
-`idm-config/acceptance-test.sh` — each run writes a fresh log under
-`evidence/`.
+**Re-run: 15/15** — the read-only enforcement check was added as its own
+step. The runner script is the record of the exact commands. Reproduce
+anytime with `idm-config/acceptance-test.sh`; each run writes a local
+request/response log under `test/runs/` (not tracked).
 
 Chain: `smoke-test.sh` → `apply-sql.sh 001_lab_tables.sql` → `deploy.sh` →
 IDM restart → `acceptance-test.sh`, all against the live warehouse:
@@ -152,14 +148,12 @@ the SP is the only credential the connector could have used.
 
 Evidence:
 
-- [`evidence/acceptance-20260909-152314.log`](../evidence/acceptance-20260909-152314.log)
-  — full suite 15/15 on M2M, IDM log line "Databricks connection set to
+- Full suite 15/15 on M2M, IDM log line "Databricks connection set to
   OAuth M2M as service principal <sp-client-id>".
 - **Databricks query history** (independent, server-side): 21 recent
   warehouse queries executed by user `<sp-client-id>`
   (the SP) vs 4 by <admin-user> (admin out-of-band tooling).
-- [`evidence/acceptance-20260909-152159.log`](../evidence/acceptance-20260909-152159.log)
-  — the run immediately after IDM restart: early steps failed transiently
+- The run immediately after IDM restart (6/15): early steps failed transiently
   (cold serverless warehouse + first M2M token exchange while the facade
   initialized; routes 404'd) and the suite self-healed mid-run. Recorded as
   a cold-start characteristic, not a defect: production topologies should
@@ -172,8 +166,7 @@ plain script body with `configuration` bound (the scripted-REST
 page omits customizer/customSensitiveConfiguration, but the shipped
 `ScriptedSQLConfiguration` inherits both (javap + live probe).
 
-**Token-lifetime soak: 9/9 OK** —
-[`evidence/soak-20260909-152501.log`](../evidence/soak-20260909-152501.log):
+**Token-lifetime soak: 9/9 OK** (`databricks/soak-test.sh`):
 probes every 10 min for 80 min (23:25→00:45 UTC), crossing the 1-hour
 token boundary with zero failures; pool `maxAge=50min` recycling holds.
 Migration checklist complete except optional workspace PAT revocation
@@ -188,8 +181,7 @@ comparator negation, values only ever bound as `?` parameters) and — since
 the suite had never exercised a real `_queryFilter` expression — a new check
 (3c: `eq` and `sw` operators) now covers it. Suite grew a readiness gate
 (polls the connector test action before asserting), which absorbs the known
-cold-start 404s after a deploy. Result: **16/16**, evidence in
-[`../evidence/`](../evidence/) (`acceptance-node-2026-09-12T19-11-14.log`).
-Also this session: run evidence relocated from `docs/evidence/` to top-level
-`evidence/`; personal identifiers scrubbed from docs and logs; `NOTICE.md`,
-credential template, and agent guide added.
+cold-start 404s after a deploy. Result: **16/16**.
+Also this session: personal identifiers scrubbed from docs;
+`NOTICE.md`, credential template, and agent guide added. Run logs now stay
+local under `test/runs/` (gitignored) rather than being committed.

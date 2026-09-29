@@ -30,8 +30,9 @@ PingIDM/AIC. Read in this order before changing anything:
 5. **Commits: only when the user says so.** Atomic (one logical change),
    plain imperative subject lines, no conventional-commit prefixes.
 6. **Evidence discipline:** every acceptance/soak run writes a raw
-   request/response log to `evidence/` with the commit in the header. Claims
-   of "it works" cite an evidence file.
+   request/response log to `test/runs/` (gitignored, local only) with the
+   commit in the header. Check claims of "it works" against a run log;
+   record the result in `docs/spike-results.md`, not the log itself.
 
 ## Conventions
 
@@ -58,7 +59,7 @@ PingIDM/AIC. Read in this order before changing anything:
 # Lab up? (DS on 31389, IDM on 8443 — see README runbook)
 curl -k -u openidm-admin:openidm-admin https://localhost:8443/openidm/info/ping
 idm-config/deploy.sh                  # push tracked config to runtime
-cd test && npm test                   # 16 checks; writes evidence/ + JUnit XML
+cd test && npm test                   # 16 checks; writes test/runs/ + JUnit XML
 ```
 
 `idm-config/acceptance-test.sh` is the zero-dependency smoke fallback;

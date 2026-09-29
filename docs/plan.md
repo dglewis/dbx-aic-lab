@@ -69,7 +69,7 @@ Test harness (2026-09-09): acceptance suite ported to Node/Vitest in
 `test/` — 15/15 on first run. IDM REST assertions; out-of-band checks via
 the Databricks SQL Statement Execution REST API (vendor-native, independent
 of the connector's JDBC path); env profiles `lab`/`tenant` so the same
-suite runs against AIC in phase 3; evidence to `evidence/`, JUnit XML
+suite runs against AIC in phase 3; local run logs to `test/runs/`, JUnit XML
 for CI. `idm-config/acceptance-test.sh` retained as the zero-dependency
 smoke fallback; `databricks/smoke-test.sh` stays the same-driver
 diagnostic.
@@ -88,8 +88,7 @@ diagnostic.
       encrypted `customSensitiveConfiguration`; IDM holds no PAT
       (boot.properties purged); acceptance 15/15 as the SP, confirmed by
       Databricks query history. Token-lifetime soak: 9/9 probes OK across
-      80 min, crossing the 1-hour token boundary (evidence:
-      `evidence/soak-20260909-152501.log`). Remaining: optional
+      80 min, crossing the 1-hour token boundary. Remaining: optional
       workspace PAT revocation once admin tooling no longer needs it
 - [ ] Port provisioners/mappings; ESVs for secrets; re-run acceptance set
       (tenant workspace: recreate SP + grants there per the same checklist)

@@ -35,8 +35,7 @@ The documentation trail, in reading order:
 [design](docs/design.md) (the as-built system) →
 [plan](docs/plan.md) (phases and status) →
 [spike results](docs/spike-results.md) (dated findings, including retracted
-ones) → [`evidence/`](evidence/) (raw request/response logs from every test
-run, tied to commits).
+ones).
 
 ## What you need
 
@@ -59,7 +58,7 @@ cp secrets/databricks.env.example secrets/databricks.env   # then fill it in
 databricks/apply-sql.sh databricks/sql/001_lab_tables.sql
 # 5. Deploy connector config + scripts into the runtime:
 idm-config/deploy.sh
-# 6. Prove it works (16 checks; writes evidence/ + JUnit XML):
+# 6. Prove it works (16 checks; writes test/runs/ + JUnit XML):
 cd test && npm install && npm test
 ```
 
@@ -75,10 +74,10 @@ The suite needs the live lab — it is a manual gate, not a CI job.
 | `idm-config/conf/` | yes | Provisioner + mapping JSON (`provisioner.openicf-*.json`, `sync.json`) — copied into `runtime/openidm/conf/` |
 | `idm-config/script/` | yes | ScriptedSQL Groovy scripts (one per ICF operation + customizer) |
 | `databricks/` | yes | Lab tooling: `smoke-test.sh` (JDBC connectivity), `apply-sql.sh` + `JdbcRunner.java` (run SQL over the driver), `sql/` (DDL, CDF setup, seed data) |
-| `test/` | yes | Node/Vitest acceptance suite (`cd test && npm install && npm test`) — IDM REST assertions + Databricks-native out-of-band checks over the SQL Statement Execution REST API; profile-driven (`PROFILE=lab\|tenant`); writes `evidence/acceptance-node-*.log` + JUnit XML |
+| `test/` | yes | Node/Vitest acceptance suite (`cd test && npm install && npm test`) — IDM REST assertions + Databricks-native out-of-band checks over the SQL Statement Execution REST API; profile-driven (`PROFILE=lab\|tenant`); writes `test/runs/acceptance-node-*.log` + JUnit XML |
 | `rcs/` | yes | Phase-2 Java RCS config |
 | `docs/` | yes | ADR, design, plan, spike results — the narrative record |
-| `evidence/` | yes | Raw request/response logs from acceptance and soak runs, headers tied to commits |
+| `test/runs/` | no (gitignored) | Local HTTP request/response logs, one per acceptance/soak run |
 | `secrets/databricks.env.example` | yes | Credential template — the only tracked file under `secrets/` |
 
 ## Phases
