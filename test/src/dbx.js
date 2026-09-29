@@ -6,12 +6,11 @@ import { databricks } from './profile.js'
 import { call } from './http.js'
 
 const base = `https://${databricks.host}/api/2.0/sql/statements`
-const auth = { Authorization: `Bearer ${databricks.token}` }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 export async function sql(statement, label = 'out-of-band SQL') {
   let r = await call(label, 'POST', base, {
-    headers: { ...auth, 'Content-Type': 'application/json' },
+    headers: { Authorization: await databricks.bearer(), 'Content-Type': 'application/json' },
     body: {
       statement,
       warehouse_id: databricks.warehouseId,
@@ -23,7 +22,7 @@ export async function sql(statement, label = 'out-of-band SQL') {
   const id = r.json?.statement_id
   while (state === 'PENDING' || state === 'RUNNING') {
     await sleep(2000)
-    r = await call(`${label} (poll)`, 'GET', `${base}/${id}`, { headers: auth })
+    r = await call(`${label} (poll)`, 'GET', `${base}/${id}`, { headers: { Authorization: await databricks.bearer() } })
     state = r.json?.status?.state
   }
   if (state !== 'SUCCEEDED') {

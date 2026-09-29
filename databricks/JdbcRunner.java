@@ -16,6 +16,13 @@ import java.util.List;
  * Usage (driver jar on classpath, env from secrets/databricks.env):
  *   java -cp runtime/openidm/lib/databricks-jdbc-2.7.3.jar \
  *        databricks/JdbcRunner.java "SELECT 1" [@file.sql ...]
+ *   java databricks/JdbcRunner.java --describe-auth   (no query; prints the
+ *        auth method and redacted effective URL)
+ *
+ * Auth (ADR-002): OAuth M2M as the service principal when
+ * DATABRICKS_SP_CLIENT_ID + DATABRICKS_SP_CLIENT_SECRET are set — same URL
+ * assembly as idm-config/script/CustomizerScript.groovy; otherwise the
+ * optional DATABRICKS_PAT.
  *
  * Statements in @files are split on ";" at end-of-line; comment-only lines
  * are dropped. Keep DDL comments on their own lines.
@@ -23,11 +30,25 @@ import java.util.List;
 public class JdbcRunner {
 
     public static void main(String[] args) throws Exception {
-        String url = System.getenv("DATABRICKS_JDBC_URL");
-        String pat = System.getenv("DATABRICKS_PAT");
-        if (url == null || url.isBlank() || pat == null || pat.isBlank()) {
-            System.err.println("DATABRICKS_JDBC_URL / DATABRICKS_PAT not set — source secrets/databricks.env");
+        String url = env("DATABRICKS_JDBC_URL");
+        String clientId = env("DATABRICKS_SP_CLIENT_ID");
+        String clientSecret = env("DATABRICKS_SP_CLIENT_SECRET");
+        String pat = env("DATABRICKS_PAT");
+        boolean m2m = clientId != null && clientSecret != null;
+        if (url == null || (!m2m && pat == null)) {
+            System.err.println("set DATABRICKS_JDBC_URL and either DATABRICKS_SP_CLIENT_ID + "
+                    + "DATABRICKS_SP_CLIENT_SECRET (OAuth M2M, preferred) or DATABRICKS_PAT (optional)"
+                    + " — source secrets/databricks.env");
             System.exit(2);
+        }
+        String effectiveUrl = m2m ? m2mUrl(url, clientId, clientSecret) : url;
+
+        if (args.length == 1 && args[0].equals("--describe-auth")) {
+            System.out.println("auth=" + (m2m ? "m2m" : "pat"));
+            System.out.println("url=" + effectiveUrl
+                    .replaceFirst("//[^:/;]+", "//<host>")
+                    .replaceAll("(?i)(OAuth2Secret|PWD)=[^;]*", "$1=***"));
+            return;
         }
         if (args.length == 0) {
             System.err.println("usage: JdbcRunner \"<sql>\" | @file.sql ...");
@@ -50,8 +71,10 @@ public class JdbcRunner {
             }
         }
 
-        // PAT auth: AuthMech=3 in the URL, UID=token, PWD=<pat> as credentials
-        try (Connection conn = DriverManager.getConnection(url, "token", pat);
+        // M2M: credentials are in the URL. PAT: AuthMech=3 URL, UID=token, PWD=<pat>.
+        try (Connection conn = m2m
+                ? DriverManager.getConnection(effectiveUrl)
+                : DriverManager.getConnection(url, "token", pat);
              Statement st = conn.createStatement()) {
             for (String q : statements) {
                 String head = q.replaceAll("\\s+", " ");
@@ -81,5 +104,21 @@ public class JdbcRunner {
             }
         }
         System.out.println("SMOKE-OK");
+    }
+
+    private static String env(String key) {
+        String v = System.getenv(key);
+        return v == null || v.isBlank() ? null : v;
+    }
+
+    /** Strip any auth params and append OAuth M2M ones (mirrors CustomizerScript.groovy). */
+    static String m2mUrl(String url, String clientId, String clientSecret) {
+        StringBuilder kept = new StringBuilder();
+        for (String part : url.split(";")) {
+            if (part.matches("(?i)(AuthMech|Auth_Flow|OAuth2ClientId|OAuth2Secret|UID|PWD)=.*")) continue;
+            if (kept.length() > 0) kept.append(';');
+            kept.append(part);
+        }
+        return kept + ";AuthMech=11;Auth_Flow=1;OAuth2ClientId=" + clientId + ";OAuth2Secret=" + clientSecret;
     }
 }

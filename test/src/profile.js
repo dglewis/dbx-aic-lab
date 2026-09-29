@@ -3,11 +3,11 @@
 // secrets/databricks.env (gitignored), which uses shell-style KEY=value lines
 // with optional double quotes.
 import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
+import { resolveCredential, tokenProvider } from './dbx-auth.js'
 
-const testRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-export const repoRoot = join(testRoot, '..')
+import { testRoot, repoRoot } from './paths.js'
+export { repoRoot }
 
 export const profileName = process.env.PROFILE ?? 'lab'
 export const profile = JSON.parse(readFileSync(join(testRoot, 'env', `${profileName}.json`), 'utf8'))
@@ -34,9 +34,13 @@ export function secret(key) {
   return v
 }
 
+const dbxHost = secret(profile.databricks.hostEnvKey)
 export const databricks = {
-  host: secret(profile.databricks.hostEnvKey),
-  token: secret(profile.databricks.tokenEnvKey),
+  host: dbxHost,
+  // Async: yields an Authorization header value (M2M token, or the optional PAT).
+  bearer: tokenProvider(
+    resolveCredential(profile.databricks.auth, (k) => process.env[k] || secretsEnv[k]),
+    dbxHost),
   warehouseId: secret(profile.databricks.warehouseIdFromHttpPathEnvKey).split('/').filter(Boolean).pop(),
 }
 

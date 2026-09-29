@@ -7,7 +7,12 @@
   },
   "databricks": {
     "hostEnvKey": "DATABRICKS_HOST",
-    "tokenEnvKey": "DATABRICKS_PAT",
+    "auth": {
+      "comment": "ADR-002: OAuth M2M as the service principal; the PAT is used only if no SP is configured.",
+      "clientIdEnvKey": "DATABRICKS_SP_CLIENT_ID",
+      "clientSecretEnvKey": "DATABRICKS_SP_CLIENT_SECRET",
+      "patEnvKey": "DATABRICKS_PAT"
+    },
     "warehouseIdFromHttpPathEnvKey": "DATABRICKS_HTTP_PATH"
   },
   "system": "databricks",
