@@ -8,6 +8,14 @@ runtime/
 # Vendor zips staged in the repo root (DS-8.1.1.zip etc.)
 *.zip
 
+# Java RCS distribution — extracted from the Backstage zip or the official
+# image, proprietary, never committed. Only our own files under rcs/ are tracked.
+rcs/openicf/
+
+# Container build output / exported images
+*.tar
+*.oci
+
 # Secrets — Databricks PATs, RCS credentials. Never commit.
 *.env
 secrets/*

@@ -7,6 +7,20 @@ This repository contains **no Ping Identity software or source code**.
   `.gitignore`), are not redistributable, and must be downloaded from the
   [Ping Identity Backstage](https://backstage.forgerock.com/downloads) site
   under your own license/account.
+- The **Java Remote Connector Server (RCS)** — the Backstage zip and the
+  official image `gcr.io/forgerock-io/rcs` — is Ping Identity software. The
+  image is publicly pullable, but its start scripts and logging config carry
+  "Use of this code requires a commercial software license with Ping
+  Identity Corporation" (framework jars are CDDL-1.0). Nothing from it is
+  included here: `rcs/openicf/` is gitignored, and any Dockerfile in this
+  repo only references the image (`FROM …`) and copies this repo's own
+  files. Running it requires your own Ping license. Our
+  `ConnectorServer.properties`, `logback.xml`, entrypoint and Kubernetes
+  manifests are written from the public documentation, not adapted from the
+  image's files.
+- [ForgeOps](https://github.com/ForgeRock/forgeops) (CDDL-1.0, Ping Identity,
+  "as-is" support) was read as a reference for RCS on Kubernetes. No ForgeOps
+  files are copied into this repository.
 - The Groovy scripts under `idm-config/script/` are original work written
   against the publicly documented
   [Groovy Connector Toolkit](https://docs.pingidentity.com/openicf/connector-reference/groovy.html)
@@ -18,6 +32,6 @@ This repository contains **no Ping Identity software or source code**.
   (`com.databricks:databricks-jdbc`, Apache-2.0 per its POM) and is not
   committed to this repository.
 - "Ping Identity", "PingIDM", "PingOne Advanced Identity Cloud", and
-  "Databricks" are trademarks of their respective owners. This is an
-  independent lab/prototype, not affiliated with or endorsed by either
-  vendor.
+  "Databricks" are trademarks of their respective owners, as are
+  "Kubernetes", "Azure", "AWS" and "Google Cloud". This is an independent
+  lab/prototype, not affiliated with or endorsed by any of these vendors.
