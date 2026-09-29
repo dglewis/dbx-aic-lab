@@ -8,7 +8,7 @@
 // Run: cd test && npm test          (PROFILE=lab default)
 //      PROFILE=tenant npm test      (phase 3)
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { profile } from '../src/profile.js'
+import { profile, profileName, preflight } from '../src/profile.js'
 import * as idm from '../src/idm.js'
 import { sql } from '../src/dbx.js'
 import { evidencePath, note } from '../src/http.js'
@@ -16,19 +16,31 @@ import { evidencePath, note } from '../src/http.js'
 const T = profile.tables
 
 describe('databricks connector acceptance', () => {
-  // Readiness gate: after a deploy/restart the connector re-registers, and
-  // its first pooled connection does an OAuth exchange against a possibly
-  // cold serverless warehouse — routes 404 until that completes. Poll the
-  // test action until the facade is live so the suite measures the
-  // connector, not its startup latency.
   beforeAll(async () => {
+    // Config errors fail here, immediately and by name — a missing token or
+    // an unfilled profile placeholder must never masquerade as the
+    // readiness timeout below.
+    preflight()
+
+    // Readiness gate: after a deploy/restart the connector re-registers, and
+    // its first pooled connection does an OAuth exchange against a possibly
+    // cold serverless warehouse — routes 404 until that completes. Poll the
+    // test action until the facade is live so the suite measures the
+    // connector, not its startup latency.
     const deadline = Date.now() + 180_000
+    let last = 'no response'
     for (;;) {
       try {
         const r = await idm.connectorTest()
         if (r.json?.ok === true) return
-      } catch { /* IDM not answering yet */ }
-      if (Date.now() > deadline) throw new Error('connector not ready within 180s')
+        last = `HTTP ${r.status} ${r.text.slice(0, 160)}`
+      } catch (e) {
+        last = e.message
+      }
+      if (Date.now() > deadline) {
+        throw new Error(`connector not ready within 180s (profile=${profileName}, ` +
+          `${profile.idm.base}) — last response: ${last}`)
+      }
       await new Promise((res) => setTimeout(res, 5000))
     }
   }, 200_000)

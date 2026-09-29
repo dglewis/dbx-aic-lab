@@ -46,6 +46,23 @@ if (profile.idm.insecureTLS) {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 }
 
+// Fail fast on configuration problems, before any polling or retry loop can
+// disguise them as timeouts: unfilled profile placeholders and unresolvable
+// secrets both surface here, named.
+export function preflight() {
+  const unfilled = [
+    ['idm.base', profile.idm.base],
+    ['databricks host', databricks.host],
+  ].filter(([, v]) => /[<>]/.test(String(v)))
+  if (unfilled.length) {
+    throw new Error(
+      `profile "${profileName}" has unfilled placeholders: ` +
+      unfilled.map(([k, v]) => `${k}="${v}"`).join(', ') +
+      ` — edit test/env/${profileName}.json`)
+  }
+  idmAuthHeader() // throws by name if the configured secret is missing
+}
+
 export function idmAuthHeader() {
   const a = profile.idm.auth
   if (a.type === 'basic') {

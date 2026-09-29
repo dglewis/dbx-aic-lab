@@ -17,15 +17,22 @@ const scrub = (t) => REDACTIONS.reduce((s, [v, p]) => (v ? s.split(v).join(p) : 
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
 export const evidencePath = join(repoRoot, 'test', 'runs', `acceptance-node-${stamp}.log`)
-mkdirSync(join(repoRoot, 'test', 'runs'), { recursive: true })
 
-let commit = 'unknown'
-try { commit = execSync('git rev-parse HEAD', { cwd: repoRoot }).toString().trim() } catch {}
-appendFileSync(evidencePath,
-  `# Node acceptance run ${new Date().toISOString()} profile=${profileName} commit=${commit}\n` +
-  `# commands: test/specs/*.test.js at the commit above\n`)
+// The file appears on the first logged exchange, not at import — a run that
+// dies in config preflight leaves no header-only stub behind.
+let started = false
+function start() {
+  mkdirSync(join(repoRoot, 'test', 'runs'), { recursive: true })
+  let commit = 'unknown'
+  try { commit = execSync('git rev-parse HEAD', { cwd: repoRoot }).toString().trim() } catch {}
+  appendFileSync(evidencePath,
+    `# Node acceptance run ${new Date().toISOString()} profile=${profileName} commit=${commit}\n` +
+    `# commands: test/specs/*.test.js at the commit above\n`)
+  started = true
+}
 
 function log(label, text) {
+  if (!started) start()
   appendFileSync(evidencePath, `\n=== [${new Date().toISOString()}] ${label}\n${scrub(text)}\n`)
 }
 
