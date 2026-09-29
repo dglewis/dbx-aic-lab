@@ -2,6 +2,8 @@
 
 **Status:** Accepted (2026-09-09) — **ScriptedSQL**. Decided on decision
 inputs (2) and (4) below, ahead of the functional spike; see Decision.
+The authentication method itself is recorded in
+[ADR-002](adr-002-databricks-authentication.md).
 
 ## Context
 
@@ -87,7 +89,7 @@ docs/spike-results.md. Free Edition still has no account *console*, but
 workspace-level SP identity + OAuth secrets are sufficient for M2M.
 Consequence: the PAT (BI Tools scope, 30d) is merely the connector's
 *current* lab auth; the M2M migration checklist
-([design.md, "Migration: PAT → OAuth M2M"](design.md)) is executable in the
+([design.md, "Setting up OAuth M2M"](design.md#setting-up-oauth-m2m-service-principal)) is executable in the
 lab now rather than deferred to a paid workspace. Lesson recorded: vendor
 limits get verified empirically before they decide anything.
 
