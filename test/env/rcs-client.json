@@ -1,0 +1,27 @@
+{
+  "comment": "Topology T2 (the target): connector hosted by the local Java RCS in client mode (idm-config/deploy.sh rcs-client). Same IDM endpoint as lab; the profile name tags evidence logs. Non-secret values only.",
+  "idm": {
+    "base": "https://localhost:8443/openidm",
+    "auth": {
+      "type": "basic",
+      "username": "openidm-admin",
+      "password": "openidm-admin"
+    },
+    "insecureTLS": true
+  },
+  "databricks": {
+    "hostEnvKey": "DATABRICKS_HOST",
+    "auth": {
+      "comment": "ADR-002: OAuth M2M as the service principal; the PAT is used only if no SP is configured.",
+      "clientIdEnvKey": "DATABRICKS_SP_CLIENT_ID",
+      "clientSecretEnvKey": "DATABRICKS_SP_CLIENT_SECRET",
+      "patEnvKey": "DATABRICKS_PAT"
+    },
+    "warehouseIdFromHttpPathEnvKey": "DATABRICKS_HTTP_PATH"
+  },
+  "system": "databricks",
+  "tables": {
+    "inbound": "workspace.idm_lab.business_records",
+    "outbound": "workspace.idm_lab.outbound_records"
+  }
+}

@@ -1,0 +1,12 @@
+{
+    "name" : "STATIC_USER",
+    "properties" : {
+        "queryOnResource" : "internal/user",
+        "username" : "connector-server-client",
+        "password" : "&{rcs.idm.password}",
+        "defaultUserRoles" : [
+            "internal/role/rcs-rcslocal"
+        ]
+    },
+    "enabled" : true
+}

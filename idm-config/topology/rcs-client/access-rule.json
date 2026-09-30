@@ -1,0 +1,7 @@
+{
+    "servlet" : "openicf",
+    "pattern" : "rcslocal",
+    "roles" : "internal/role/rcs-rcslocal",
+    "methods" : "read",
+    "actions" : ""
+}

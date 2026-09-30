@@ -1,0 +1,12 @@
+{
+    "connectorsLocation" : "connectors",
+    "enabled" : true,
+    "remoteConnectorClients" : [
+        {
+            "name" : "rcslocal",
+            "displayName" : "Local Java RCS (client mode)",
+            "enabled" : true,
+            "useSSL" : true
+        }
+    ]
+}
