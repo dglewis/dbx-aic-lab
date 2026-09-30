@@ -1,5 +1,5 @@
 {
-  "name": "db-conn-tests",
+  "name": "dbx-aic-lab-tests",
   "private": true,
   "type": "module",
   "description": "Acceptance test suite for the Databricks ScriptedSQL connector. IDM REST assertions + Databricks-native out-of-band verification (SQL Statement Execution REST API). Profile-driven: PROFILE=lab|rcs|tenant.",

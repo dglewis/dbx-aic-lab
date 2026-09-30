@@ -1,4 +1,4 @@
-# db-conn — Databricks ⇄ PingAIC connector lab
+# dbx-aic-lab — Databricks ⇄ PingAIC connector lab
 
 A working prototype of a **bidirectional ICF connector between Databricks and
 PingOne Advanced Identity Cloud**, built and validated on a local lab:

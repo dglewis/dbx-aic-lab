@@ -1,4 +1,4 @@
-# Agent guide — db-conn
+# Agent guide — dbx-aic-lab
 
 Context for AI coding agents (Claude Code, Cursor, etc.) working in this repo.
 
