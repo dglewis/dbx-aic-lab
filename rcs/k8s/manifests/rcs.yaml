@@ -1,4 +1,5 @@
-# One RCS pod in client mode, connecting out to IDM on the Mac.
+# Two RCS pods in client mode, connecting out to IDM on the Mac. Each pod is a
+# named connector server (rcs0, rcs1); IDM puts both in one failover group.
 # Written for this repo. The Secret "rcs-idm-credentials" is created by
 # rcs/k8s/deploy.sh from secrets/rcs.env — never committed.
 apiVersion: v1
@@ -13,7 +14,7 @@ metadata:
   namespace: dbx-aic-lab
 spec:
   serviceName: rcs          # client mode: no inbound traffic, so no Service object
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels: { app: rcs }
   template:
@@ -42,6 +43,32 @@ spec:
             # credentials out of the process list and out of env vars.
             - name: OPENICF_OPTS
               value: "@/var/run/rcs-credentials/credentials.args"
+            # Port the RCS dials (connectorserver.url): 8443 in the lab, 443 for AIC.
+            - name: RCS_UPSTREAM_PORT
+              value: "8443"
+          # Client mode opens no port and has no health endpoint, so the probes
+          # check for an ESTABLISHED socket to the upstream port (state 01 in
+          # /proc/net/tcp*). Liveness is slow on purpose: the RCS reconnects on
+          # its own (newConnectionsInterval=10), and an upstream outage must not
+          # restart-loop every pod.
+          startupProbe:
+            exec: &upstream-connected
+              command:
+                - /bin/sh
+                - -c
+                - awk -v p="$(printf ':%04X' "$RCS_UPSTREAM_PORT")"
+                  'FNR>1 && $4=="01" && substr($3, length($3)-4)==p {f=1} END {exit !f}'
+                  /proc/net/tcp /proc/net/tcp6
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            exec: *upstream-connected
+            periodSeconds: 10
+            failureThreshold: 2
+          livenessProbe:
+            exec: *upstream-connected
+            periodSeconds: 20
+            failureThreshold: 6
           volumeMounts:
             - name: idm-credentials
               mountPath: /var/run/rcs-credentials
@@ -57,3 +84,14 @@ spec:
           secret:
             secretName: rcs-idm-credentials
             defaultMode: 0440         # owner + fsGroup read only
+---
+# Keep one RCS connected during voluntary disruptions (node drain, upgrades).
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rcs
+  namespace: dbx-aic-lab
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: rcs }
