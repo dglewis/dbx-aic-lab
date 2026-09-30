@@ -14,6 +14,13 @@ research backing the target is in [rcs-kubernetes-research.md](rcs-kubernetes-re
 | Sync engine | Recon, liveSync, mappings | Local PingIDM (DS-backed) standing in for AIC — same engine, configs port to tenant |
 | RCS | Connector host in production topology | Client mode — see Topology |
 
+Ping ships no Databricks connector and documents no Databricks integration
+(checked 2026-09-30 in the [ICF connector list](https://docs.pingidentity.com/openicf/connector-reference/preface.html)
+and Ping's docs). The nearest, the
+[Snowflake connector](https://docs.pingidentity.com/openicf/connector-reference/snowflake.html),
+manages users and roles, not table data. This design rests on Ping's generic
+ScriptedSQL docs and Databricks' own JDBC and change-feed docs.
+
 ### Connector vs RCS
 
 Two different things that are easy to conflate — and they scale differently.
