@@ -56,6 +56,11 @@ Dated records keep their wording: `docs/spike-results.md` (what happened on
 a date) and the ADRs (what was decided and why). Don't restate them
 elsewhere as current guidance.
 
+Enforcement: `node scripts/check-docs.mjs` (links, anchors, and the owned
+facts in `scripts/doc-owners.json`), run by the git pre-commit hook in
+`.githooks/`. The procedure for agents is the skill in
+`.agents/skills/docs-single-source/` (`.claude/skills` links to it).
+
 ## Conventions
 
 - Naming (provisioners per system, object classes per dataset), the sync
