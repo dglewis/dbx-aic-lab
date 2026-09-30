@@ -44,6 +44,7 @@ The connector-vs-RCS distinction: [design.md](docs/design.md#connector-vs-rcs).
 The documentation trail, in reading order:
 [ADR-001](docs/adr-001-connector-selection.md) (why this connector) →
 [ADR-002](docs/adr-002-databricks-authentication.md) (why OAuth M2M) →
+[ADR-003](docs/adr-003-rcs-per-external-system.md) (why one RCS cluster per system) →
 [design](docs/design.md) (the as-built system) →
 [plan](docs/plan.md) (phases and status) →
 [Databricks requirements](docs/databricks-requirements.md) (what a data team must provide) →

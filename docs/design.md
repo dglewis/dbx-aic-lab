@@ -36,7 +36,7 @@ Two different things that are easy to conflate — and they scale differently.
 
 Consequences:
 - An RCS *can* host many connectors, but this design gives each external
-  system its own RCS cluster (see "One RCS cluster per external system").
+  system its own RCS cluster ([ADR-003](adr-003-rcs-per-external-system.md)).
 - Every RCS instance opens its **own** JDBC pool: Databricks connections ≈
   RCS instances × pool size. The warehouse, not RCS count, bounds throughput.
 - Adding RCS instances adds no sync capacity: liveSync/recon schedules and
@@ -279,17 +279,14 @@ Kubernetes decisions:
 
 ### One RCS cluster per external system
 
-Every external system — and every separate instance of the same kind
-(two AD domains, two Oracle databases) — gets its own RCS cluster: its own
-pods, image and registered names. Within a cluster, each connector server
+Every external system — and every separate instance of the same kind —
+gets its own RCS cluster, with its own image and registered names
+(decision and reasons: [ADR-003](adr-003-rcs-per-external-system.md)).
+Within a cluster, each connector server
 (each pod) has its own OAuth client and its own role, as Ping recommends
 [documented: RCS configuration migration FAQ], so a leaked or reset
 credential affects one pod, not the cluster. A connector reaches its
-cluster only through its `connectorHostRef`, so nothing is shared: changing,
-restarting or breaking one system's RCS leaves the others alone. Sharing
-one RCS would couple systems through one `lib/` directory (cluster members
-must have identical jars and scripts [documented]), one JVM, one image
-release cadence and one network reach.
+cluster only through its `connectorHostRef`.
 
 Names are the system's name, without an `rcs` prefix — they are already
 listed as connector servers and clusters. Use lowercase letters and digits

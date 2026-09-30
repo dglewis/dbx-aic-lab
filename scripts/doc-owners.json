@@ -1,14 +1,55 @@
 {
   "comment": "Facts that must be stated only in their owner file (AGENTS.md → 'Where things are documented'). Add an entry whenever a duplicate is found and consolidated. pattern = JavaScript regex matched per line.",
   "facts": [
-    { "fact": "timestamp interchange format", "pattern": "yyyy-MM-dd'T'HH:mm:ss", "owner": "docs/design.md" },
-    { "fact": "JDBC pool maxAge vs token lifetime", "pattern": "maxAge", "owner": "docs/design.md" },
-    { "fact": "cloud egress idle timeouts", "pattern": "NAT GW 350 s|4 min default", "owner": "docs/design.md" },
-    { "fact": "AIC token endpoint for the RCS", "pattern": "realms/root/realms/alpha/access_token", "owner": "README.md" },
-    { "fact": "RCS scope for AIC", "pattern": "fr:idm:", "owner": "README.md" },
-    { "fact": "RCS connection property values", "pattern": "(webSocketConnections|connectionTtl|housekeepingInterval|groupCheckInterval|newConnectionsInterval)=", "owner": "README.md" },
-    { "fact": "minikube cluster setup command", "pattern": "minikube start|--kubernetes-version", "owner": "README.md" },
-    { "fact": "CDF table property", "pattern": "delta\\.enableChangeDataFeed", "owner": "docs/databricks-requirements.md" },
-    { "fact": "Databricks grants for the service principal", "pattern": "SELECT, MODIFY", "owner": "docs/databricks-requirements.md" }
+    {
+      "fact": "timestamp interchange format",
+      "pattern": "yyyy-MM-dd'T'HH:mm:ss",
+      "owner": "docs/design.md"
+    },
+    {
+      "fact": "JDBC pool maxAge vs token lifetime",
+      "pattern": "maxAge",
+      "owner": "docs/design.md"
+    },
+    {
+      "fact": "cloud egress idle timeouts",
+      "pattern": "NAT GW 350 s|4 min default",
+      "owner": "docs/design.md"
+    },
+    {
+      "fact": "AIC token endpoint for the RCS",
+      "pattern": "realms/root/realms/alpha/access_token",
+      "owner": "README.md"
+    },
+    {
+      "fact": "RCS scope for AIC",
+      "pattern": "fr:idm:",
+      "owner": "README.md"
+    },
+    {
+      "fact": "RCS connection property values",
+      "pattern": "(webSocketConnections|connectionTtl|housekeepingInterval|groupCheckInterval|newConnectionsInterval)=",
+      "owner": "README.md"
+    },
+    {
+      "fact": "minikube cluster setup command",
+      "pattern": "minikube start|--kubernetes-version",
+      "owner": "README.md"
+    },
+    {
+      "fact": "CDF table property",
+      "pattern": "delta\\.enableChangeDataFeed",
+      "owner": "docs/databricks-requirements.md"
+    },
+    {
+      "fact": "Databricks grants for the service principal",
+      "pattern": "SELECT, MODIFY",
+      "owner": "docs/databricks-requirements.md"
+    },
+    {
+      "fact": "why systems don't share an RCS",
+      "pattern": "couples? (unrelated )?systems",
+      "owner": "docs/adr-003-rcs-per-external-system.md"
+    }
   ]
 }
