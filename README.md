@@ -92,6 +92,8 @@ identity — provider-neutral design in
 ## Quickstart
 
 ```bash
+# 0. Once per clone: run the docs drift check on every commit
+git config core.hooksPath .githooks        # check by hand: node scripts/check-docs.mjs
 # 1. Vendor artifacts (Backstage) -> repo root: IDM-8.1.1.zip, DS-8.1.1.zip
 # 2. Stand up DS + IDM: follow the Runbook section below (one-time setup)
 # 3. Configure credentials:

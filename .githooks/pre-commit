@@ -1,0 +1,9 @@
+#!/bin/sh
+# Blocks a commit when the docs have a broken link/anchor or restate an owned
+# fact outside its owner (scripts/check-docs.mjs). Enable once per clone:
+#   git config core.hooksPath .githooks
+node "$(git rev-parse --show-toplevel)/scripts/check-docs.mjs" || {
+  echo "Commit blocked by the docs check. Fix the owner/links (AGENTS.md →"
+  echo "'Where things are documented'), or bypass once with --no-verify."
+  exit 1
+}
