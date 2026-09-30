@@ -207,6 +207,21 @@ mvn dependency:copy -Dartifact=com.databricks:databricks-jdbc:2.7.3 \
   -DoutputDirectory=runtime/openidm/lib/
 ```
 
+### After moving or renaming the repo folder
+
+DS and IDM keep running from the old path, and IDM's OSGi bundle cache
+stores absolute paths — symptom: `info/ping` returns
+`Module "router-authz" not found`. Restart both from the new path:
+
+```bash
+(cd runtime/openidm && ./shutdown.sh); runtime/opendj/bin/stop-ds
+# stop-ds can hang waiting on a pid file the old-path server never removes:
+# once the server is gone, interrupt it and delete runtime/opendj/logs/server.pid
+rm -rf runtime/openidm/felix-cache     # regenerated at start
+runtime/opendj/bin/start-ds
+cd runtime/openidm && ./startup.sh
+```
+
 ### Plain-JVM RCS path, client mode (topology T2 — the target)
 
 The RCS connects out to IDM, as it will to AIC.
