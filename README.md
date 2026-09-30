@@ -275,6 +275,21 @@ rcs/k8s/failover-test.sh ops|livesync   # kill the active pod; log in test/runs/
 # Unknowns #14 (the suite's readiness gate covers it).
 ```
 
+**Making changes on the Kubernetes path** — what to run depends on where
+the changed thing lives (why: [design.md → Topology](docs/design.md#topology),
+"Immutable image"):
+
+| You changed | It lives | Run |
+|---|---|---|
+| Groovy scripts, JDBC driver, `rcs/k8s/ConnectorServer.properties`, truststore, RCS version | the image | `rcs/k8s/build.sh`, then `rcs/k8s/deploy.sh` (restarts the pods) |
+| Provisioner, mappings, schedules | IDM (AIC: the tenant) | `idm-config/deploy.sh rcs-k8s` — pods untouched |
+| RCS login (`secrets/rcs.env`) | Kubernetes Secret | `rcs/k8s/deploy.sh` |
+| A new attribute (schema + script) | both | both rows above, together |
+
+For script-heavy work, iterate on the plain-JVM RCS and bake the result
+into the image. In production the image gets a new tag per change, is
+pushed to a registry, and rolls one pod at a time.
+
 ### AIC: one RCS cluster per system
 
 For each external system, with names per
