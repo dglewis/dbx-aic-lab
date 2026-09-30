@@ -275,6 +275,7 @@ Headers and legal files only — not legal advice. Consequences are in
 | 13 | Redistribution terms for a derived RCS image (ask Ping) | before tenant step |
 | 14 | A freshly started RCS fails every data operation (JDBC URL without the M2M settings) until IDM's connector **test** action runs on it once; test runs the customizer. By design or a framework defect? Affects every pod restart, not only failover | Known concern — revisit before tenant step (options: scheduled test call as a warm-up; ask Ping) |
 | 15 | liveSync interrupted by a pod kill never returned an error; liveSync calls made while it was pending hung, IDM logging "Failed to find request response target". Test was not clean (overlapping calls, 5-min checks) — rerun properly before drawing conclusions | Known concern — revisit with a clean test |
+| 16 | Does `SELECT` alone allow `DESCRIBE HISTORY` (the connector's latest-version query)? Databricks documents `SELECT` for `table_changes()` but no privileges for `DESCRIBE HISTORY`; the lab SP also has `MODIFY`, so it was never tested read-only | Before tenant step — test: scratch table with CDF, SP granted only `SELECT` ([table_changes](https://docs.databricks.com/aws/en/sql/language-manual/functions/table_changes), [DESCRIBE HISTORY](https://docs.databricks.com/aws/en/sql/language-manual/delta-describe-history)) |
 
 ## Sources
 
