@@ -57,7 +57,7 @@ may accept it. It is an opt-in, never a dependency.
   `deploy.sh` keeps no PAT in `boot.properties`.
 - Lab tooling and the acceptance suite must work with the service principal
   alone; a PAT, when present, is an alternative credential, not a
-  prerequisite. Tracked in [plan.md](plan.md) (G0).
+  prerequisite. Tracked in [plan.md](plan.md) (Baseline).
 - The service principal needs its own least-privilege grants per workspace;
   setup steps are in [design.md → "Setting up OAuth M2M"](design.md#setting-up-oauth-m2m-service-principal).
 - Pooled JDBC connections must not outlive the one-hour token: pool

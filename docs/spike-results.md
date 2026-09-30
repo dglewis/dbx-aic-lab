@@ -211,7 +211,7 @@ below the connector — not a connector or config fault:
   org/forgerock/json/resource/ResourceException` after the hot redeploy
   (IDM up ~17 days). Suspected stale classloader — recheck after restart.
 
-Unblock is owner-side (plan.md → G0).
+Unblock is owner-side (plan.md → Baseline).
 
 ## 2026-09-29 — baseline restored: 16/16, no PAT anywhere
 

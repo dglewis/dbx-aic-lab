@@ -136,10 +136,11 @@ The suite needs the live lab — it is a manual gate, not a CI job.
    `runtime/openidm/connectors/`; Databricks JDBC jar in `openidm/lib/`;
    author the Groovy scripts, configure one provisioner against Databricks
    Free Edition, run test/recon/CRUD/liveSync (CDF sync token).
-2. **RCS, plain JVM then Kubernetes** — gated, one new layer per step, each
-   must pass the unchanged suite: RCS on the host in server mode → client
-   mode → one pod in minikube → the Kubernetes contract (two replicas,
-   failover, pod kill). Earlier steps stay runnable. Gates:
+2. **RCS in client mode, plain JVM then Kubernetes** — the RCS connects out
+   to IDM, the only mode AIC supports. One new layer per step, each must
+   pass the unchanged suite: RCS on the Mac → one pod in minikube → two pods
+   with failover. Earlier steps stay runnable. (Server mode was run once as
+   a stepping stone; it has no production use here.) Steps:
    [plan.md](docs/plan.md).
 3. **Real AIC tenant** — RCS pods in a managed Kubernetes cluster (any
    major cloud) in client mode against the tenant. Databricks auth is
@@ -219,7 +220,11 @@ mvn dependency:copy -Dartifact=com.databricks:databricks-jdbc:2.7.3 \
   -DoutputDirectory=runtime/openidm/lib/
 ```
 
-### Plain-JVM RCS path (topology T1)
+### Plain-JVM RCS path, server mode (stepping stone, topology T1)
+
+Server mode (IDM connects in to the RCS) isn't supported by AIC; this path
+proved the connector works when hosted on an RCS. The client-mode path
+replaces it once built.
 
 ```bash
 cp secrets/rcs.env.example secrets/rcs.env   # set RCS_KEY (alphanumeric)
@@ -236,7 +241,7 @@ cd test && PROFILE=rcs npm test
 
 Planned setup for macOS. Check each command against the minikube docs for
 the installed version before running (hard rule: version-exact docs first);
-this block becomes as-run once gate G3 in [plan.md](docs/plan.md) passes.
+this block becomes as-run once gate the Kubernetes one-pod step in [plan.md](docs/plan.md) passes.
 
 ```bash
 brew install vfkit                      # Apple Virtualization.framework driver

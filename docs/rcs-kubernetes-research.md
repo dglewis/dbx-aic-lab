@@ -3,7 +3,7 @@
 Status: research only, 2026-09-29. Nothing here is built yet. Distilled
 into [design.md](design.md) ("Connector vs RCS", "Topology") and the
 Phase 2 gates in [plan.md](plan.md); this file keeps the evidence and the
-open questions. Gates G0–G4 here match plan.md; G5 is plan.md Phase 3.
+open questions. Step names match plan.md Phase 2; "Tenant" is plan.md Phase 3.
 
 Tags: **[D]** official vendor doc (Ping, Microsoft, AWS, Google Cloud),
 **[IMG]** verified by inspecting the official RCS image (layers + bytecode),
@@ -14,27 +14,27 @@ Tags: **[D]** official vendor doc (Ping, Microsoft, AWS, Google Cloud),
 Each layer gets its own green acceptance run before the next is added, so a
 failure can only come from the layer just introduced:
 
-| Gate | Topology | New variable introduced | Pass criterion |
+| Step | Topology | New variable introduced | Pass criterion |
 |---|---|---|---|
-| G0 | Connector in-process in IDM (Phase 1) | — (baseline) | `npm test` 16/16 |
-| G1 | Java RCS on the Mac, **server mode** (IDM → RCS :8759) | remote hosting: scripts, driver, secret transport | 16/16 unchanged, connector proven to run on RCS |
-| G2 | Java RCS on the Mac, **client mode** (RCS → IDM `wss://…/openicf`) | connection direction + auth as AIC uses it | 16/16 |
-| G3 | Official RCS **container image** under minikube, one pod | image, file layout, env/`-D` secrets, logging | 16/16 |
-| G4 | Kubernetes contract: Secrets, probes, pod kill, failover group | orchestration | 16/16 + reconnect/failover timings |
-| G5 | Managed Kubernetes dev cluster (client's cloud) → AIC tenant (Phase 3) | cloud egress, secret store, workload identity, ESVs | 16/16 with `PROFILE=tenant` |
+| Baseline | Connector in-process in IDM (Phase 1) | — (baseline) | `npm test` 16/16 |
+| Server mode (stepping stone) | Java RCS on the Mac, **server mode** (IDM → RCS :8759) | remote hosting: scripts, driver, secret transport | 16/16 unchanged, connector proven to run on RCS |
+| Client mode, Mac | Java RCS on the Mac, **client mode** (RCS → IDM `wss://…/openicf`) | connection direction + auth as AIC uses it | 16/16 |
+| Kubernetes, one pod | Official RCS **container image** under minikube, one pod | image, file layout, env/`-D` secrets, logging | 16/16 |
+| Kubernetes, HA | Kubernetes contract: Secrets, probes, pod kill, failover group | orchestration | 16/16 + reconnect/failover timings |
+| Tenant | Managed Kubernetes dev cluster (client's cloud) → AIC tenant (Phase 3) | cloud egress, secret store, workload identity, ESVs | 16/16 with `PROFILE=tenant` |
 
-G2 matters because AIC accepts **only** client mode — "server mode isn't
-compatible with PingOne Advanced Identity Cloud" [D configure-server]. Server
-mode (G1) is still the cheapest first proof of remote hosting; client mode
-then isolates the connection direction before containers enter.
+Client mode is the target: AIC accepts **only** client mode — "server mode
+isn't compatible with PingOne Advanced Identity Cloud" [D configure-server].
+The server-mode row was run once as a stepping stone (it proved remote
+hosting works) and has no production use for this project.
 
-## G0 — baseline status
+## baseline — baseline status
 
 Blocked on 2026-09-29 by Databricks-side issues (warehouse won't start,
 PAT invalid) — details and diagnosis in
 [spike-results.md](spike-results.md#2026-09-29--baseline-blocked-warehouse-wont-start-pat-invalid).
 
-## Java RCS — facts that shape G1/G2
+## Java RCS — facts that shape the RCS-on-Mac steps
 
 **Version / JDK.** Use **1.5.20.36** (latest; fixes a hung token refresh that
 blocked websocket upgrades, adds shared token cache, hostId-routed paged
@@ -85,7 +85,7 @@ The provisioner gains `connectorRef.connectorHostRef: "<name>"`; `&{}` is
 not allowed inside `connectorRef` [D property-substitution]. Websocket is
 the only protocol since IDM 7 [D removed-functionality].
 
-**Changes our connector needs** (all [I], confirmed by G1):
+**Changes our connector needs** (all [I], confirmed by server-mode step):
 1. `scriptRoots` — `&{idm.instance.dir}` is resolved by IDM to an IDM-host
    path; the scripts run on the RCS filesystem. Use an RCS path
    (e.g. `&{rcs.script.root}` → `/opt/openicf/scripts/databricks`). Avoid
@@ -107,9 +107,9 @@ server `ok` [D]; `_action=availableConnectors` lists remote connectors [D];
 `Connector.log` (connector/Groovy output goes **only** here by default, not
 stdout [IMG]). AIC UI shows Connected / "Waiting to connect…".
 
-## G1–G2 validation sequence (bare JVM)
+## server/client-mode steps validation sequence (bare JVM)
 
-1. G0 green; note commit + run log.
+1. baseline green; note commit + run log.
 2. Extract RCS 1.5.20.36 into `rcs/` (untracked contents); JDK 21. Pass:
    `/run` listens on 8759; `connectors/` contains scriptedsql.
 3. Driver → `rcs/openicf/lib/`; scripts → `rcs/openicf/scripts/databricks/`;
@@ -129,10 +129,10 @@ stdout [IMG]). AIC UI shows Connected / "Waiting to connect…".
 8. TLS on both sides (RCS PKCS12 keystore → IDM truststore). Pass: 16/16;
    capture on 8759 shows no plaintext secret.
 9. Token-boundary soak through RCS (as Phase 1, 80 min).
-10. **G2:** switch to client mode against local IDM (`remoteConnectorClients`,
+10. **client-mode step:** switch to client mode against local IDM (`remoteConnectorClients`,
     RCS dials `wss://localhost:8443/openicf`), repeat 6–7.
 
-## RCS on Kubernetes — facts that shape G3/G4
+## RCS on Kubernetes — facts that shape the Kubernetes steps
 
 **Official image** `gcr.io/forgerock-io/rcs:1.5.20.36` [D rcs-docker, IMG]:
 - First **multi-arch** tag (amd64 + arm64) — native on Apple Silicon, same
@@ -196,7 +196,7 @@ across environments [D]); whether an ESV works *inside* the
   an ESTABLISHED :443 socket in `/proc/net/tcp`; external check via
   `testConnectorServers` [I]. Server mode: tcpSocket on 8759.
 - **No shutdown hook** — SIGTERM kills the JVM without closing websockets
-  gracefully [IMG]. Mitigate with a failover group; measure in G4.
+  gracefully [IMG]. Mitigate with a failover group; measure in Kubernetes HA step.
 - Always set a memory limit (`MaxRAMPercentage=80` by default).
 - Ship a custom `logback.xml` so connector/Groovy logs reach stdout; mind
   the "redact hosts" rule — RCS logs the tenant URL at startup.
@@ -211,9 +211,9 @@ with `recompileGroovySource=true` [D].
 
 | | Pros | Cons |
 |---|---|---|
-| Plain JVM (G1–G2) | Seconds per iteration; debugger attaches; isolates RCS behaviour | Tests nothing about the image or orchestration |
-| Local K8s (G3–G4) | Tests the real artifact: image, file layout, Secrets-as-files, probes, limits/OOM, pod-kill reconnect, failover groups, manifests/Helm; same API as any managed Kubernetes | 30–90 s per iteration; debugging indirection; a VM (2–4 GB); **cannot** reproduce cloud egress/idle timeouts, the cloud secret store, workload identity, private-registry pull, the provider's CNI |
-| Managed Kubernetes dev cluster (G5) | The only honest test of the cloud-specific pieces | Cost; slower loop |
+| Plain JVM (server/client-mode steps) | Seconds per iteration; debugger attaches; isolates RCS behaviour | Tests nothing about the image or orchestration |
+| Local K8s (Kubernetes steps) | Tests the real artifact: image, file layout, Secrets-as-files, probes, limits/OOM, pod-kill reconnect, failover groups, manifests/Helm; same API as any managed Kubernetes | 30–90 s per iteration; debugging indirection; a VM (2–4 GB); **cannot** reproduce cloud egress/idle timeouts, the cloud secret store, workload identity, private-registry pull, the provider's CNI |
+| Managed Kubernetes dev cluster (tenant step) | The only honest test of the cloud-specific pieces | Cost; slower loop |
 
 Verdict: Kubernetes is overkill as the daily loop for connector logic; it
 earns its place as a few rehearsals of the deployment contract. Keep
@@ -269,19 +269,19 @@ Headers and legal files only — not legal advice. Consequences are in
 
 | # | Question | Gate |
 |---|---|---|
-| 1 | `useSSL` vs `usessl` in IDM connectorinfoprovider | G1 — **answered**: IDM 8.1.1 uses `useSSL` (from `createConnectorServerCoreConfig`); its defaults are housekeeping 600 s, group check 900 s, ping-pong 300 s, not the documented 20/60/60 |
-| 2 | CustomizerScript/GuardedString path unchanged on RCS | G1 — **answered**: arrives as `GuardedString`, populates `propertyBag.oauth2`, customizer unchanged. One unexplained first-init miss (see spike-results) |
-| 3 | scriptedsql 1.5.20.36 + databricks-jdbc 2.7.3 on Java 21; `EnableArrow=0` still needed | G1 — **works** (16/16, driver in `openicf/lib/`); run with `EnableArrow=0`, necessity not retested |
-| 4 | Script-edit reload behaviour on RCS | G1 |
-| 5 | Local IDM 8.1.1 accepts client-mode RCS (auth method) | G2 |
-| 6 | Default RCS truststore validates the Databricks endpoint | G3 |
-| 7 | Custom logback puts Groovy output on stdout | G3 |
-| 8 | Pod kill mid-recon/liveSync: IDM error, failover time, sync-token consistency | G4 |
-| 9 | Client-mode liveness probe fidelity (`/proc/net/tcp` vs `testConnectorServers`) | G4 |
-| 10 | Same-name replicas vs distinct names + cluster; hyphens in names | G4/G5 |
-| 11 | ESV inside `customSensitiveConfiguration` | G5 |
-| 12 | Websocket idle survival through the provider's egress (NAT/LB) | G5 |
-| 13 | Redistribution terms for a derived RCS image (ask Ping) | before G5 |
+| 1 | `useSSL` vs `usessl` in IDM connectorinfoprovider | server-mode step — **answered**: IDM 8.1.1 uses `useSSL` (from `createConnectorServerCoreConfig`); its defaults are housekeeping 600 s, group check 900 s, ping-pong 300 s, not the documented 20/60/60 |
+| 2 | CustomizerScript/GuardedString path unchanged on RCS | server-mode step — **answered**: arrives as `GuardedString`, populates `propertyBag.oauth2`, customizer unchanged. One unexplained first-init miss (see spike-results) |
+| 3 | scriptedsql 1.5.20.36 + databricks-jdbc 2.7.3 on Java 21; `EnableArrow=0` still needed | server-mode step — **works** (16/16, driver in `openicf/lib/`); run with `EnableArrow=0`, necessity not retested |
+| 4 | Script-edit reload behaviour on RCS | Server mode (stepping stone) |
+| 5 | Local IDM 8.1.1 accepts client-mode RCS (auth method) | Client mode, Mac |
+| 6 | Default RCS truststore validates the Databricks endpoint | Kubernetes, one pod |
+| 7 | Custom logback puts Groovy output on stdout | Kubernetes, one pod |
+| 8 | Pod kill mid-recon/liveSync: IDM error, failover time, sync-token consistency | Kubernetes, HA |
+| 9 | Client-mode liveness probe fidelity (`/proc/net/tcp` vs `testConnectorServers`) | Kubernetes, HA |
+| 10 | Same-name replicas vs distinct names + cluster; hyphens in names | Kubernetes HA / tenant |
+| 11 | ESV inside `customSensitiveConfiguration` | Tenant |
+| 12 | Websocket idle survival through the provider's egress (NAT/LB) | Tenant |
+| 13 | Redistribution terms for a derived RCS image (ask Ping) | before tenant step |
 
 ## Sources
 

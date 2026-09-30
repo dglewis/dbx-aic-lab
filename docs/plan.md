@@ -74,17 +74,22 @@ for CI. `idm-config/acceptance-test.sh` retained as the zero-dependency
 smoke fallback; `databricks/smoke-test.sh` stays the same-driver
 diagnostic.
 
-## Phase 2 — RCS, plain JVM then Kubernetes
+## Phase 2 — RCS in client mode, plain JVM then Kubernetes
 
-Gated: each topology (design.md → "Topology") must pass the unchanged
-acceptance suite before the next adds a layer, so a failure can only come
-from the layer just introduced. Earlier topologies stay runnable — the lab
-keeps both the plain-JVM and the Kubernetes path. Research, open questions
-and validation detail: [rcs-kubernetes-research.md](rcs-kubernetes-research.md).
-Development friction on each path goes in
-[k8s-dev-experience.md](k8s-dev-experience.md).
+**Client mode is the target**: the RCS connects out to IDM/AIC. AIC supports
+only client mode, and the Kubernetes design uses it. Server mode (IDM
+connects in to the RCS) has no production use for this project; it was run
+once as a stepping stone and proved the connector works when hosted on an
+RCS.
 
-G0 — baseline re-established (T0) ✅ 2026-09-29:
+Steps run in order; each must pass the unchanged acceptance suite before
+the next adds a layer, so a failure can only come from the layer just
+introduced. Earlier steps stay runnable — the lab keeps both the plain-JVM
+and the Kubernetes path. Research, open questions and validation detail:
+[rcs-kubernetes-research.md](rcs-kubernetes-research.md). Development
+friction on each path goes in [k8s-dev-experience.md](k8s-dev-experience.md).
+
+Baseline — connector in IDM (T0) ✅ 2026-09-29:
 - [x] SQL warehouse back up (was refusing to start with `400 Cannot create
       the resource`)
 - [x] Suite's out-of-band checks and `JdbcRunner` (`apply-sql.sh`,
@@ -94,21 +99,23 @@ G0 — baseline re-established (T0) ✅ 2026-09-29:
 - [x] IDM restarted (cleared the stale-classloader `NoClassDefFoundError`),
       `deploy.sh`, `npm test` **16/16** — no PAT used anywhere
 
-G1 — Java RCS on the host JVM, server mode (T1) — functional ✅ 2026-09-29:
+Stepping stone — RCS on the Mac, server mode (T1) ✅ 2026-09-29 (not pursued further):
 - [x] RCS 1.5.20.36 extracted from the official image → `rcs/openicf/`
       (gitignored) by `rcs/fetch-rcs.sh`; JDK 21
 - [x] `rcs/` tooling (tracked, our own files): `conf/ConnectorServer.properties`,
-      `deploy.sh` (key via `/setKey`, driver → `openicf/lib/`, scripts →
-      `openicf/scripts/databricks/`), `run.sh`
-- [x] `idm-config/deploy.sh rcs`: `topology/rcs/provisioner.openicf.connectorinfoprovider.json`,
-      provisioner `connectorHostRef` + RCS-side `scriptRoots`
+      `deploy.sh`, `run.sh`; `idm-config/deploy.sh rcs` points IDM's
+      provisioner at the RCS (`connectorHostRef`, RCS-side `scriptRoots`)
 - [x] Proven remote: with IDM's scriptedsql + driver jars removed, IDM lists
       only the RCS connector, connector test ok, 16/16; scripts and the M2M
       customizer execute in the RCS
 - [x] `PROFILE=rcs` → **16/16**; switching back (`deploy.sh local`) → T0 16/16
-- [ ] Negatives: wrong key, RCS kill/recovery, script-edit reload
-- [ ] TLS on the IDM↔RCS link (the connector config, incl. the SP secret,
-      crosses it); token-boundary soak through the RCS
+
+RCS on the Mac, client mode (T2) — next:
+- [ ] IDM `remoteConnectorClients`; RCS connects to `wss://localhost:8443/openicf`
+      and authenticates to IDM (no AM locally); trusts IDM's certificate
+- [ ] `PROFILE=rcs-client` → 16/16
+- [ ] Negatives: wrong credentials, RCS kill/recovery, script-edit reload;
+      token-boundary soak through the RCS
 
 Connector hardening (any topology; design.md → "Sync / change detection"):
 - [ ] `SyncScript`: fail loudly when the stored token exceeds the table's
@@ -116,11 +123,7 @@ Connector hardening (any topology; design.md → "Sync / change detection"):
 - [ ] `SyncScript`: resume at `token` and skip already-applied rows, so a
       poll failing mid-commit can't skip the rest of that commit
 
-G2 — Java RCS on the host JVM, client mode (T2):
-- [ ] IDM `remoteConnectorClients`; RCS dials `wss://localhost:8443/openicf`
-- [ ] `PROFILE=rcs-client` → 16/16; negatives
-
-G3 — official RCS image, one pod in minikube (T3):
+Kubernetes — one pod in minikube, client mode (T3):
 - [ ] Install `vfkit`; delete the stale docker-driver minikube profile;
       cluster per README runbook (verify against minikube docs first)
 - [ ] Dockerfile `FROM gcr.io/forgerock-io/rcs:1.5.20.36` + our files;
@@ -128,7 +131,7 @@ G3 — official RCS image, one pod in minikube (T3):
 - [ ] Own `logback.xml` so connector/Groovy logs reach stdout
 - [ ] `PROFILE=k8s` → 16/16
 
-G4 — Kubernetes contract (T3, 2 replicas):
+Kubernetes — high availability (T3, 2 replicas):
 - [ ] StatefulSet, Secrets as files, probes, PodDisruptionBudget, IDM
       failover group
 - [ ] Pod kill mid-recon/liveSync: error surfaced, failover time, sync-token
