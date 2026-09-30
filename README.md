@@ -118,8 +118,8 @@ The suite needs the live lab — it is a manual gate, not a CI job.
 | `idm-config/conf/` | yes | Provisioner + mapping JSON (`provisioner.openicf-*.json`, `sync.json`) — copied into `runtime/openidm/conf/` |
 | `idm-config/script/` | yes | ScriptedSQL Groovy scripts (one per ICF operation + customizer) |
 | `databricks/` | yes | Lab tooling: `smoke-test.sh` (JDBC connectivity), `apply-sql.sh` + `JdbcRunner.java` (run SQL over the driver), `sql/` (DDL, CDF setup, seed data) |
-| `test/` | yes | Node/Vitest acceptance suite (`cd test && npm install && npm test`) — IDM REST assertions + Databricks-native out-of-band checks over the SQL Statement Execution REST API; profile-driven (`PROFILE=lab\|tenant`, more per topology as phase 2 lands); writes `test/runs/acceptance-node-*.log` + JUnit XML. `test/unit/`: offline unit tests (`npm run test:unit`) |
-| `rcs/` | yes | RCS files we author: `fetch-rcs.sh`, `deploy.sh`, `run.sh`, `conf/{client,server}/ConnectorServer.properties` (Dockerfile and manifests to come) |
+| `test/` | yes | Node/Vitest acceptance suite (`cd test && npm install && npm test`) — IDM REST assertions + Databricks-native out-of-band checks over the SQL Statement Execution REST API; profile-driven (one profile per topology, `test/env/*.json`); writes `test/runs/acceptance-node-*.log` + JUnit XML. `test/unit/`: offline unit tests (`npm run test:unit`) |
+| `rcs/` | yes | RCS files we author: `fetch-rcs.sh`, `deploy.sh`, `run.sh`, `conf/{client,server}/ConnectorServer.properties`; `k8s/` — Dockerfile, manifests, build/deploy and failover-test scripts |
 | `rcs/openicf/` | no (gitignored) | Extracted Java RCS distribution (proprietary) |
 | `docs/` | yes | ADR, design, plan, spike results — the narrative record |
 | `test/runs/` | no (gitignored) | Local HTTP request/response logs, one per acceptance/soak run |

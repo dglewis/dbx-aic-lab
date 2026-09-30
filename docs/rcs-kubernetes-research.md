@@ -71,7 +71,7 @@ configure-server].
 
 **IDM side.** New `conf/provisioner.openicf.connectorinfoprovider.json`:
 - server mode → `remoteConnectorServers: [{name, host, port, useSSL, key, …}]`
-  (IDM 8.1.1 jar reads `useSSL`, not the docs' `usessl` [L] — verify);
+  (IDM 8.1.1 reads `useSSL`, not the docs' `usessl` [L] — Unknowns #1);
 - client mode → `remoteConnectorClients` (RCS dials `wss://<idm>:8443/openicf`) [D];
 - HA → a group with `algorithm: failover|roundrobin` [D]; IDM 8.1.1 reads
   client-mode groups from the top-level `remoteConnectorClientsGroups`
@@ -141,8 +141,8 @@ stdout [IMG]). AIC UI shows Connected / "Waiting to connect…".
 - Documented customization: `FROM gcr.io/forgerock-io/rcs:<tag>`, `COPY`
   `conf/ lib/ scripts/`; non-secret props in the file, secrets via
   `OPENICF_OPTS` at runtime. Sample Dockerfile ships in the distribution.
-- Default truststore has public CAs incl. Microsoft/DigiCert roots (should
-  validate Databricks — verify). RCS sets `javax.net.ssl.trustStore` to its
+- Default truststore has public CAs incl. Microsoft/DigiCert roots and
+  validates Databricks (Unknowns #6). RCS sets `javax.net.ssl.trustStore` to its
   own truststore, so JDK `cacerts` edits don't apply.
 
 **ForgeOps `charts/rcs`** (2026.3, "as-is" support) — useful reference, not
@@ -185,9 +185,9 @@ across environments [D]); whether an ESV works *inside* the
 `customSensitiveConfiguration` string is untested.
 
 **Health / lifecycle.**
-- **No health endpoint.** Client mode opens no port. Options: exec probe on
-  an ESTABLISHED :443 socket in `/proc/net/tcp`; external check via
-  `testConnectorServers` [I]. Server mode: tcpSocket on 8759.
+- **No health endpoint.** Client mode opens no port [IMG]; the exec probe
+  on an ESTABLISHED upstream socket in `/proc/net/tcp*` works (Unknowns #9).
+  Server mode: tcpSocket on 8759.
 - **No shutdown hook** — SIGTERM kills the JVM without closing websockets
   gracefully [IMG]. Mitigate with a failover group; measure in Kubernetes HA step.
 - Always set a memory limit (`MaxRAMPercentage=80` by default).

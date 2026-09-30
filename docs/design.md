@@ -236,13 +236,13 @@ self-healing. The target uses both.
 
 ```
 IDM / AIC tenant
- └─ connector-server cluster (algorithm: failover)
-      ├─ "rcs0" ◄──wss──┐
-      └─ "rcs1" ◄──wss──┤   outbound 443 only
-                        │
-Kubernetes: StatefulSet "rcs", replicas: 2
- ├─ pod rcs-0 → RCS name rcs0 → Databricks connector + JDBC pool ──► Databricks
- └─ pod rcs-1 → RCS name rcs1 → Databricks connector + JDBC pool ──► Databricks
+ └─ connector-server cluster "databricks" (algorithm: failover)
+      ├─ "databricks0" ◄──wss──┐
+      └─ "databricks1" ◄──wss──┤   outbound 443 only
+                               │
+Kubernetes: StatefulSet "databricks", replicas: 2
+ ├─ pod databricks-0 → RCS name databricks0 → connector + JDBC pool ──► Databricks
+ └─ pod databricks-1 → RCS name databricks1 → connector + JDBC pool ──► Databricks
 ```
 
 Kubernetes decisions:

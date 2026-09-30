@@ -160,7 +160,7 @@ Known concerns — recorded, not blocking; revisit before the tenant step
 
 ## Phase 3 — real AIC tenant
 
-- [ ] **DAN**: tenant access (dev env); RCS client-mode OAuth creds
+- [ ] **DAN**: tenant access (dev env); one RCS OAuth client per connector server
 - [x] OAuth M2M in the lab (design.md → "Setting up OAuth M2M", 2026-09-09):
       connector runs as SP `idm-connector-lab` via CustomizerScript +
       encrypted `customSensitiveConfiguration`; IDM holds no PAT
@@ -172,7 +172,8 @@ Known concerns — recorded, not blocking; revisit before the tenant step
 - [ ] Managed Kubernetes dev cluster on the client's cloud (provider-neutral
       design; per-provider overlay for secret store + pod identity — see
       design.md → "Cloud-provider neutrality"); private registry, amd64 image
-- [ ] Register RCS names, cluster and OAuth client in AIC (README → Runbook →
+- [ ] Register connector servers, cluster, and an OAuth client + role per
+      server in AIC (README → Runbook →
       "AIC: one RCS cluster per system");
       `PROFILE=tenant` → 16/16
 - [ ] Websocket idle survival through the provider's egress (soak)
