@@ -1,0 +1,29 @@
+{
+    "connectorsLocation" : "connectors",
+    "enabled" : true,
+    "remoteConnectorClients" : [
+        {
+            "name" : "rcs0",
+            "displayName" : "RCS pod rcs-0 (client mode)",
+            "enabled" : true,
+            "useSSL" : true
+        },
+        {
+            "name" : "rcs1",
+            "displayName" : "RCS pod rcs-1 (client mode)",
+            "enabled" : true,
+            "useSSL" : true
+        }
+    ],
+    "remoteConnectorClientsGroups" : [
+        {
+            "name" : "rcsdatabricks",
+            "displayName" : "Databricks RCS pods (failover)",
+            "algorithm" : "failover",
+            "serversList" : [
+                { "name" : "rcs0" },
+                { "name" : "rcs1" }
+            ]
+        }
+    ]
+}

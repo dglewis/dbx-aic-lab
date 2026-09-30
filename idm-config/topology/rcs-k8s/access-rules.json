@@ -1,0 +1,16 @@
+[
+    {
+        "servlet" : "openicf",
+        "pattern" : "rcs0",
+        "roles" : "internal/role/rcs-databricks",
+        "methods" : "read",
+        "actions" : ""
+    },
+    {
+        "servlet" : "openicf",
+        "pattern" : "rcs1",
+        "roles" : "internal/role/rcs-databricks",
+        "methods" : "read",
+        "actions" : ""
+    }
+]

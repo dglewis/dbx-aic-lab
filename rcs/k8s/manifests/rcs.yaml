@@ -30,6 +30,13 @@ spec:
         - name: rcs
           image: dbx-aic-lab-rcs:dev
           imagePullPolicy: Never      # built inside the minikube node by build.sh
+          # Connector server name from the pod name: rcs-0 -> rcs0 (names must
+          # match ^[a-z0-9]*$). Then the image's own entrypoint, unchanged.
+          command: ["/bin/sh", "-c"]
+          args:
+            - n=$$(hostname);
+              export OPENICF_OPTS="$OPENICF_OPTS -Dconnectorserver.connectorServerName=${n%%-*}${n##*-}";
+              exec /opt/openicf/bin/docker-entrypoint.sh
           env:
             # JDK @argfile with -Dconnectorserver.principal/password: keeps the
             # credentials out of the process list and out of env vars.

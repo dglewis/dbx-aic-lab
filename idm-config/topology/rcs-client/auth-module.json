@@ -5,7 +5,7 @@
         "username" : "connector-server-client",
         "password" : "&{rcs.idm.password}",
         "defaultUserRoles" : [
-            "internal/role/rcs-rcslocal"
+            "internal/role/rcs-databricks"
         ]
     },
     "enabled" : true
