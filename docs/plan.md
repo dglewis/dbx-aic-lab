@@ -174,7 +174,8 @@ Known concerns — recorded, not blocking; revisit before the tenant step
 - [ ] Managed Kubernetes dev cluster on the client's cloud (provider-neutral
       design; per-provider overlay for secret store + pod identity — see
       design.md → "Cloud-provider neutrality"); private registry, amd64 image
-- [ ] Register RCS names + dedicated OAuth clients and access rules in AIC;
+- [ ] Register RCS names, cluster and OAuth client in AIC (README → Runbook →
+      "AIC: one RCS cluster per system");
       `PROFILE=tenant` → 16/16
 - [ ] Websocket idle survival through the provider's egress (soak)
 - [ ] Ask Ping: redistribution terms for a derived RCS image

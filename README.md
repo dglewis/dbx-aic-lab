@@ -273,6 +273,66 @@ rcs/k8s/failover-test.sh ops|livesync   # kill the active pod; log in test/runs/
 # work (plan.md → known concerns); the suite's readiness gate makes it.
 ```
 
+### AIC: one RCS cluster per system
+
+For each external system, with names per
+[design.md → One RCS cluster per external system](docs/design.md#one-rcs-cluster-per-external-system)
+(`<system>` = e.g. `databricks`; `<n>` = `0`, `1` — one per pod). Follows
+Ping's recommendations; distilled from the sources listed below — check
+them for your tenant's current console.
+
+1. **Register one connector server per pod** — *Identities → Connect →
+   Connector Servers → + New Connector Server*: name `<system><n>`; tick
+   *Create a new OAuth Client* with client ID `<system><n>-client` and a
+   secret. Record each secret once, in your secret store. Every server gets
+   its own client — Ping recommends a specific client per connector server
+   rather than the shared built-in `RCSClient`.
+2. **Give each client its own role, and each server an access rule** —
+   over IDM's REST config in the tenant:
+   - `/openidm/config/authentication` → `rsFilter.staticUserMapping`: map
+     subject `<system><n>-client` to role `<system><n>-client-authorized`
+   - `/openidm/config/access` → an `openicf` rule per server: pattern
+     `<system><n>`, roles `<system><n>-client-authorized`, methods `read`
+
+   Access rules replace a deprecated permissive default, and Ping warns:
+   *"You must configure all existing connector servers at the same time per
+   environment"* — include every RCS in the tenant, not just this one.
+3. **Create the cluster** — *Identities → Connect → Server Clusters → + New
+   Server Cluster*: name `<system>`, algorithm *Failover*, choose the
+   `<system><n>` servers.
+4. **Point the connector at the cluster** — its host is `<system>`
+   (`connectorRef.connectorHostRef` in `provisioner.openicf-<system>.json`,
+   or the server choice in the console).
+5. **Configure the RCS image** (`ConnectorServer.properties`):
+   - `connectorserver.url=wss://<tenant-fqdn>/openicf/0` (dev);
+     staging/prod: `/openicf/0 /openicf/1 /openicf/2`, space-separated.
+     With multi-region HA it becomes 6 URLs with region identifiers — only
+     after Ping enables multi-region for the tenant, not in advance.
+   - `connectorserver.tokenEndpoint=https://<tenant-fqdn>/am/oauth2/realms/root/realms/alpha/access_token`
+   - `connectorserver.scope=fr:idm:*`
+   - Interval properties and `webSocketConnections`: leave at the
+     documented defaults — Ping: *"Don't adjust these property values
+     without specific guidance from Ping."* (The RCS page's default is
+     `webSocketConnections=2`; the AIC page's example shows `3`.)
+   - `connectorserver.connectorServerName` — not in the file; each pod
+     derives it from its pod name (`<system>-0` → `<system>0`) and passes
+     it with `-D` (see `rcs/k8s/manifests/rcs.yaml`)
+6. **Deliver each pod's credentials as a secret, never in the file** — Ping
+   recommends passing `connectorserver.clientId` / `clientSecret` through
+   `OPENICF_OPTS` rather than in `ConnectorServer.properties`. Here: one
+   Kubernetes Secret (or cloud secret store) with a JDK @argfile per
+   server (`<system><n>.args`), and each pod references its own via
+   `OPENICF_OPTS`.
+7. **Deploy and verify** — every server shows as connected under
+   *Connector Servers*; the connector's test action succeeds. A freshly
+   started pod needs one connector test before data operations work
+   ([plan.md](docs/plan.md) → known concerns).
+
+Sources (Ping): [Sync identities](https://docs.pingidentity.com/pingoneaic/identities/sync-identities.html) ·
+[RCS configuration migration FAQ](https://docs.pingidentity.com/pingoneaic/product-information/migration-dependent-features/rcs-configuration-migration-faq.html) ·
+[Configure a remote connector server](https://docs.pingidentity.com/openicf/connector-reference/configure-server.html) ·
+[Multi-region high availability FAQ](https://docs.pingidentity.com/pingoneaic/tenants/environments-architecture-multi-region-faq.html)
+
 Secrets (service-principal OAuth credentials, optional PAT, warehouse HTTP path) live in untracked `*.env` /
 `secrets/` — see `.gitignore`. Sync token format, if timestamp-based:
 `yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'` (UTC, full microseconds, column type

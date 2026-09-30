@@ -185,11 +185,13 @@ Databricks JDBC driver needs its own proxy settings if a proxy is used.
 cloud secret store via Secrets Store CSI or External Secrets Operator
 (Key Vault / Secrets Manager / Secret Manager) → small wrapper entrypoint → `-D` in
 `OPENICF_OPTS`. `-D` values are visible in `/proc/1/cmdline` inside the pod.
-A dedicated OAuth client is **optional** [D sync-identities]: every RCS uses
-the built-in `RCSClient` by default, and resetting its secret means
-reconfiguring every RCS that uses it. So give this system its own client,
-shared by all its connector servers — not one per server (nothing in the docs
-asks for that). Databricks secret in AIC →
+Use a **dedicated OAuth client and a separate role per connector server**:
+"Ping Identity recommends that you migrate each of these connector servers
+to use specific OAuth 2.0 clients" and "create a separate role for each
+connector server" [D rcs-migration-faq]. (The sync-identities page only
+calls a dedicated client optional; the FAQ is the recommendation.) The
+built-in `RCSClient` is shared by every RCS, so resetting its secret
+disconnects them all. Databricks secret in AIC →
 ESV `&{esv.…}` in the provisioner (encrypted `$crypto` values don't promote
 across environments [D]); whether an ESV works *inside* the
 `customSensitiveConfiguration` string is untested.

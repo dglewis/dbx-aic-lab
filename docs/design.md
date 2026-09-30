@@ -213,7 +213,7 @@ one test profile each.
 | T0 | In-process in local IDM | — | `lab` | as-built (phase 1) |
 | T1 | Java RCS on the host JVM | IDM → RCS (server mode, :8759) | `rcs` | as-built stepping stone only — no production use (AIC is client-mode only) |
 | T2 | Java RCS on the host JVM | RCS → IDM `wss://…/openicf` (client mode) | `rcs-client` | as-built (least-privilege login) |
-| T3 | RCS pod(s) in local Kubernetes (minikube) | RCS → IDM (client mode) | `k8s` | as-built, one pod (HA pending) |
+| T3 | RCS pods in local Kubernetes (minikube) | RCS → IDM (client mode) | `k8s` | as-built, 2 pods in a failover group |
 | T4 | RCS pods in a managed Kubernetes cluster | RCS → AIC tenant (client mode) | `tenant` | target (phase 3) |
 
 Moving between topologies changes only: the provisioner's
@@ -268,6 +268,42 @@ Target Kubernetes decisions:
 - **Probes**: RCS has no health endpoint and no shutdown hook [verified in
   image]; liveness via connection check or external `testConnectorServers`
   [to test].
+
+### One RCS cluster per external system
+
+Every external system — and every separate instance of the same kind
+(two AD domains, two Oracle databases) — gets its own RCS cluster: its own
+pods, image and registered names. Within a cluster, each connector server
+(each pod) has its own OAuth client and its own role, as Ping recommends
+[documented: RCS configuration migration FAQ], so a leaked or reset
+credential affects one pod, not the cluster. A connector reaches its
+cluster only through its `connectorHostRef`, so nothing is shared: changing,
+restarting or breaking one system's RCS leaves the others alone. Sharing
+one RCS would couple systems through one `lib/` directory (cluster members
+must have identical jars and scripts [documented]), one JVM, one image
+release cadence and one network reach.
+
+Names are the system's name, without an `rcs` prefix — they are already
+listed as connector servers and clusters. Use lowercase letters and digits
+only: the AIC console also accepts `_` and `-`, but the RCS documentation
+requires `^[a-z0-9]*$` [documented], and the stricter rule satisfies both.
+
+| Item | Name | Example (`<system>` = `databricks`) |
+|---|---|---|
+| Connector servers (one per pod) | `<system>0`, `<system>1` | `databricks0`, `databricks1` |
+| Server cluster | `<system>` | `databricks` |
+| Kubernetes StatefulSet | `<system>` → pods `<system>-0`, `<system>-1` | `databricks-0` → `databricks0` |
+| OAuth client (one per connector server) | `<system>0-client`, `<system>1-client` | `databricks0-client` |
+| Role (one per connector server) | `<system>0-client-authorized`, … | `databricks0-client-authorized` |
+
+Client and role names follow Ping's own examples (`myrcs1-client`,
+`myrcs1-client-authorized`; the built-in `RCSClient` maps to
+`rcsclient-authorized`). (The lab still uses `rcs0`, `rcs1`,
+`rcsdatabricks` and one shared login; the connector and the cluster sharing
+one name is [to test].)
+
+Setting one up in AIC: [README → Runbook → AIC: one RCS cluster per
+system](../README.md#aic-one-rcs-cluster-per-system).
 
 ### Cloud-provider neutrality
 
