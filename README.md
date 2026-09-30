@@ -275,3 +275,8 @@ Secrets (service-principal OAuth credentials, optional PAT, warehouse HTTP path)
 `secrets/` — see `.gitignore`. Sync token format, if timestamp-based:
 `yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'` (UTC, full microseconds, column type
 `TIMESTAMP` not `TIMESTAMP_NTZ`).
+
+## License
+
+[Apache-2.0](LICENSE). Third-party software this lab uses keeps its own
+terms — see [NOTICE](NOTICE.md).
