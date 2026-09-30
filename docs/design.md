@@ -78,10 +78,54 @@ Attribute list TBD (business decision). Enforcement is two-layer:
 
 ## Sync / change detection
 
-Sync token = CDF `_commit_version` (Long) via `table_changes()` in
-`SyncScript.groovy`: detects creates, updates, **and deletes**; no
-timestamp-precision pitfalls. The `last_modified` column remains as data (and
-as a fallback token strategy) but is not the sync mechanism.
+Sync token = Delta Change Data Feed (CDF) `_commit_version` (Long), read by
+`SyncScript.groovy`. The `last_modified` column is data only, not the sync
+mechanism. What a Databricks team must provide:
+[databricks-requirements.md](databricks-requirements.md).
+
+How CDF maps onto ICF sync:
+
+| ICF operation | Statement | Notes |
+|---|---|---|
+| `GET_LATEST_SYNC_TOKEN` | `DESCRIBE HISTORY <table> LIMIT 1` → `version` | Initial token; liveSync emits nothing until changes arrive (the initial load is recon's job) |
+| `SYNC` | `table_changes('<table>', token + 1)` filtered to `insert`, `update_postimage`, `delete`, ordered by `_commit_version, <key>` | Deletes arrive as `delete`; token = highest `_commit_version` processed, one per object class/table |
+
+Why CDF rather than a timestamp column (ADR-001, supporting reason):
+deletes are detected; the token is assigned by Delta and strictly ordered,
+so there are no clock, tie or precision problems, and no dependence on
+writers stamping a column. Costs: CDF must be on per table, only records
+changes after it is enabled, and change data lives only as long as the
+table's retention (VACUUM deletes it) — an outage longer than that needs a
+full recon.
+
+The SQL warehouse is only the compute that runs these statements; CDF is a
+property of the Delta table. Warehouse behaviour affects operations, not
+the strategy: auto-stop vs poll interval (cost and cold starts), and sync
+pauses — without losing changes — while the warehouse is unavailable.
+
+**Where CDF isn't available** (views, federated tables, non-Delta files, or
+a subset spread across an analytics model), in order of preference:
+1. A small **sync table** the data team maintains (Delta, CDF on) holding
+   just the needed subset.
+2. CDF straight from the source table, selecting only needed columns —
+   workable when the subset comes from one table.
+3. A **view + timestamp column** watermark: creates/updates only, deletes
+   via periodic full recon; needs every write to stamp it (from the
+   database clock), a timestamp spanning all joined sources, a safety lag
+   for in-flight writes, and tie handling. Would need a second sync script.
+4. **Full recon only**, for small subsets.
+
+Writes (outbound) must target a Delta table — views, materialized views and
+streaming tables are not writable. Prefer a **landing table** (an ordinary
+Delta table, named for its role) that the data team merges into their model.
+
+Known `SyncScript` weaknesses (fixes tracked in plan.md):
+- If the table is recreated, versions restart at 0; a stored token above
+  the new latest version is reset silently, skipping changes. It should
+  fail loudly.
+- Resuming at `token + 1` skips the rest of a commit if a poll fails partway
+  through a multi-row commit. Resume at `token` and skip rows already
+  applied instead.
 
 ## Authentication
 

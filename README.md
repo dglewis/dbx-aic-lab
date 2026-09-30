@@ -51,6 +51,7 @@ The documentation trail, in reading order:
 [ADR-002](docs/adr-002-databricks-authentication.md) (why OAuth M2M) →
 [design](docs/design.md) (the as-built system) →
 [plan](docs/plan.md) (phases and status) →
+[Databricks requirements](docs/databricks-requirements.md) (what a data team must provide) →
 [spike results](docs/spike-results.md) (dated findings, including retracted
 ones). Phase-2 background: [RCS and Kubernetes research](docs/rcs-kubernetes-research.md).
 

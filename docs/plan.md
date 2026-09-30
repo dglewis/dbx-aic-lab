@@ -110,6 +110,12 @@ G1 — Java RCS on the host JVM, server mode (T1) — functional ✅ 2026-09-29:
 - [ ] TLS on the IDM↔RCS link (the connector config, incl. the SP secret,
       crosses it); token-boundary soak through the RCS
 
+Connector hardening (any topology; design.md → "Sync / change detection"):
+- [ ] `SyncScript`: fail loudly when the stored token exceeds the table's
+      latest version (table recreated) instead of resetting silently
+- [ ] `SyncScript`: resume at `token` and skip already-applied rows, so a
+      poll failing mid-commit can't skip the rest of that commit
+
 G2 — Java RCS on the host JVM, client mode (T2):
 - [ ] IDM `remoteConnectorClients`; RCS dials `wss://localhost:8443/openicf`
 - [ ] `PROFILE=rcs-client` → 16/16; negatives
