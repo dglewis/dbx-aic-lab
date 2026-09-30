@@ -293,6 +293,15 @@ listed as connector servers and clusters. Use lowercase letters and digits
 only: the AIC console also accepts `_` and `-`, but the RCS documentation
 requires `^[a-z0-9]*$` [documented], and the stricter rule satisfies both.
 
+So a pod and its connector server can never have the same name: Kubernetes
+always names StatefulSet pods `<statefulset>-<ordinal>`, with a hyphen
+([documented](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#stable-network-id)),
+and server names can't contain one. Each pod drops the hyphen from its own
+name (`databricks-0` → `databricks0`) — the closest match, one-to-one and
+derived automatically. Hyphenated server names would make them identical,
+but they contradict Ping's documented rule and are untested, so they aren't
+used.
+
 | Item | Name | Example (`<system>` = `databricks`) |
 |---|---|---|
 | Connector servers (one per pod) | `<system>0`, `<system>1` | `databricks0`, `databricks1` |
