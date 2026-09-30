@@ -16,6 +16,10 @@ and [ADR-002](adr-002-databricks-authentication.md).
   table has a change feed only when fed by an AUTO CDC flow.
 - **Change Data Feed on:** `delta.enableChangeDataFeed = true`, enabled
   before the first full load. Tell us the version at which it was enabled.
+  Turning it on is one `ALTER TABLE … SET TBLPROPERTIES` by someone with
+  `MODIFY` on the table (usually its owner — not us). Nothing runs
+  separately: Delta writes the change records in the same transaction as
+  each write; we read them with queries on your SQL warehouse.
   Also `delta.enableRowTracking = true` (required by Databricks' newer
   "automatic" CDF; already on by default for new managed tables).
 - **Key:** one non-null, unique column that never changes after insert.
@@ -45,12 +49,14 @@ The connector's sync token is the table's Delta commit version.
 
 - A **service principal** with an OAuth secret (no personal access tokens).
   Send us the client ID; deliver the secret through a secure channel.
-- Grants: `USE CATALOG`, `USE SCHEMA`; `SELECT` on tables we read;
+- Grants: `USE CATALOG`, `USE SCHEMA`; `SELECT` on tables we read (that
+  covers reading the change feed with `table_changes()`);
   `SELECT, MODIFY` on tables we write; `CAN USE` on the SQL warehouse.
 
 ## Compute and connectivity
 
-- A **SQL warehouse** (serverless preferred). Tell us its auto-stop setting —
+- A **SQL warehouse** (serverless preferred). No particular runtime (DBR
+  or DBSQL) version or JDBC driver is needed for the change feed. Tell us its auto-stop setting —
   our poll interval is chosen with it in mind.
 - Workspace host, warehouse HTTP path, OAuth token endpoint
   (`https://<workspace>/oidc/v1/token`).
