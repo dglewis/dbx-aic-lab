@@ -76,16 +76,12 @@ diagnostic.
 
 ## Phase 2 — RCS in client mode, plain JVM then Kubernetes
 
-**Client mode is the target**: the RCS connects out to IDM/AIC. AIC supports
-only client mode, and the Kubernetes design uses it. Server mode (IDM
-connects in to the RCS) has no production use for this project; it was run
-once as a stepping stone and proved the connector works when hosted on an
-RCS.
+Client mode is the target and server mode was only a stepping stone
+(why: [design.md → Topology](design.md#topology)).
 
 Steps run in order; each must pass the unchanged acceptance suite before
 the next adds a layer, so a failure can only come from the layer just
-introduced. Earlier steps stay runnable — the lab keeps both the plain-JVM
-and the Kubernetes path. Research, open questions and validation detail:
+introduced. Earlier steps stay runnable. Research, open questions and validation detail:
 [rcs-kubernetes-research.md](rcs-kubernetes-research.md). Development
 friction on each path goes in [k8s-dev-experience.md](k8s-dev-experience.md).
 
@@ -125,10 +121,8 @@ RCS on the Mac, client mode (T2) — working ✅ 2026-09-29:
       script-edit reload; token-boundary soak through the RCS
 
 Connector hardening (any topology; design.md → "Sync / change detection"):
-- [ ] `SyncScript`: fail loudly when the stored token exceeds the table's
-      latest version (table recreated) instead of resetting silently
-- [ ] `SyncScript`: resume at `token` and skip already-applied rows, so a
-      poll failing mid-commit can't skip the rest of that commit
+- [ ] `SyncScript`: fail loudly on a recreated table (weakness 1 in design.md)
+- [ ] `SyncScript`: resume at `token`, skip applied rows (weakness 2 in design.md)
 
 Kubernetes — one pod in minikube, client mode (T3) — working ✅ 2026-09-29:
 - [x] `vfkit` installed; stale docker-driver profile deleted; cluster `rcs`

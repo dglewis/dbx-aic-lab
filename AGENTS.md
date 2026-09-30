@@ -5,11 +5,8 @@ Context for AI coding agents (Claude Code, Cursor, etc.) working in this repo.
 ## What this is
 
 A spike lab proving a bidirectional ICF connector between Databricks and
-PingIDM/AIC. Read in this order before changing anything:
-`docs/adr-001-connector-selection.md` → `docs/adr-002-databricks-authentication.md` →
-`docs/design.md` → `docs/plan.md` →
-`docs/spike-results.md`. Current status: `docs/plan.md`; background in
-`docs/rcs-kubernetes-research.md`. The repo keeps **both** paths runnable
+PingIDM/AIC. Before changing anything, read the documentation trail in the
+order the README lists it. Current status: `docs/plan.md`. The repo keeps **both** paths runnable
 on purpose; never retire the plain-JVM path in favour of Kubernetes.
 
 ## Hard rules
@@ -30,10 +27,7 @@ on purpose; never retire the plain-JVM path in favour of Kubernetes.
 4. **Ping vendor code stays out.** No copying from `runtime/openidm/samples/`
    (proprietary license headers) — scripts are written clean-room against the
    documented toolkit API. The same applies to the RCS distribution/image
-   (`rcs/openicf/`, `gcr.io/forgerock-io/rcs`): its start scripts and
-   `logback.xml` are commercial-licensed, so our properties, logging config,
-   entrypoint and Kubernetes manifests are written from the public docs.
-   ForgeOps (CDDL) is a reference only. See `NOTICE.md`.
+   and ForgeOps — what is licensed how: `NOTICE.md`.
 5. **Commits: only when the user says so.** Atomic (one logical change),
    plain imperative subject lines, no conventional-commit prefixes.
 6. **Evidence discipline:** every acceptance/soak run writes a raw
@@ -43,22 +37,16 @@ on purpose; never retire the plain-JVM path in favour of Kubernetes.
 
 ## Conventions
 
-- Provisioners are named for the **system** (`provisioner.openicf-databricks.json`),
-  never for a flow direction; one instance serves both object classes
-  (`businessRecord`, `outboundRecord` — dataset-named).
-- Sync token = Delta CDF `_commit_version` (Long). Deletes are detected.
-- Timestamps interchange as `yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'` (UTC).
+- Naming (provisioners per system, object classes per dataset), the sync
+  token and the timestamp format: `docs/design.md`.
 - Groovy SQL: build statements as plain String concatenation with `?`
   parameters — GString interpolation becomes prepared-statement params,
   which breaks identifiers. `table_changes()` args cannot be parameters.
-- Connector auth is OAuth M2M assembled by `CustomizerScript.groovy` from
-  the encrypted `customSensitiveConfiguration` property. The scripted-sql
-  customizer is a **plain script body** with `configuration` bound — the
-  scripted-REST `customize { init {…} }` DSL breaks script loading.
-- Known gotchas: JDBC URL needs `EnableArrow=0` (why: `secrets/databricks.env.example`); values with
-  `;` in the sourced env file must be double-quoted; after deploy/restart
-  the first M2M connect against a cold warehouse 404s routes until the pool
-  establishes (the test suite's readiness gate handles this).
+- Connector auth (customizer, and why it is a plain script body):
+  `docs/design.md` → Credential path.
+- Known gotchas: `EnableArrow=0` and quoting values with `;` —
+  `secrets/databricks.env.example`; cold-start and fresh-pod failures —
+  `docs/design.md` step 6 and research Unknowns #14.
 
 ## Verify your changes
 

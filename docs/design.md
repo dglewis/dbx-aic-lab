@@ -9,9 +9,9 @@ research backing the target is in [rcs-kubernetes-research.md](rcs-kubernetes-re
 | Component | Role | Phase-1 realization |
 |---|---|---|
 | Databricks | System of record (inbound) / target (outbound) | Free Edition, serverless SQL warehouse, Unity Catalog, Delta tables |
-| ICF connector | CRUD + sync over JDBC | **ScriptedSQL (Groovy)** — decided per ADR-001 (auth posture + topology); bundled in IDM 8.1.1 |
-| JDBC driver | Wire protocol | OSS `databricks-jdbc` 2.7.3, class `com.databricks.client.jdbc.Driver` (verified from jar), in `openidm/lib/` |
-| Sync engine | Recon, liveSync, mappings | Local PingIDM 8.1.1 (DS-backed) standing in for AIC — same engine, configs port to tenant |
+| ICF connector | CRUD + sync over JDBC | **ScriptedSQL (Groovy)** — decided per ADR-001 (auth posture + topology); bundled in PingIDM |
+| JDBC driver | Wire protocol | OSS `databricks-jdbc`, class `com.databricks.client.jdbc.Driver` (verified from jar), in `openidm/lib/` |
+| Sync engine | Recon, liveSync, mappings | Local PingIDM (DS-backed) standing in for AIC — same engine, configs port to tenant |
 | RCS | Connector host in production topology | Client mode — see Topology |
 
 ### Connector vs RCS
@@ -119,12 +119,12 @@ streaming tables are not writable. Prefer a **landing table** (an ordinary
 Delta table, named for its role) that the data team merges into their model.
 
 Known `SyncScript` weaknesses (fixes tracked in plan.md):
-- If the table is recreated, versions restart at 0; a stored token above
-  the new latest version is reset silently, skipping changes. It should
-  fail loudly.
-- Resuming at `token + 1` skips the rest of a commit if a poll fails partway
-  through a multi-row commit. Resume at `token` and skip rows already
-  applied instead.
+1. If the table is recreated, versions restart at 0; a stored token above
+   the new latest version is reset silently, skipping changes. It should
+   fail loudly.
+2. Resuming at `token + 1` skips the rest of a commit if a poll fails partway
+   through a multi-row commit. Resume at `token` and skip rows already
+   applied instead.
 
 ## Authentication
 
@@ -154,8 +154,7 @@ it into `configuration.propertyBag`, and `CustomizerScript.groovy` strips any
 auth params from the base `&{databricks.jdbc.url}` and appends the M2M set —
 so the secret exists only in encrypted config and in memory, never in a
 plaintext property. `username`/`password` are unused placeholders (the driver
-ignores UID/PWD under `AuthMech=11`; verified). Rotation = new SP secret →
-update the secret source → recycle the connector; tracked config unchanged.
+ignores UID/PWD under `AuthMech=11`; verified). Rotation: step 8 below.
 
 **Verified toolkit fact (1.5.20.33):** the scripted-sql customizer is a plain
 script body with `configuration` in the binding; the scripted-REST
@@ -174,9 +173,10 @@ per workspace (e.g. the tenant's).
    access → Service principals; or the workspace SCIM API). ✔ lab
 2. **Generate an OAuth secret** for it (SP → Secrets → Generate secret) —
    record client ID + secret once. ✔ lab
-3. **Least-privilege grants:** warehouse `CAN USE`; Unity Catalog `USE
-   CATALOG`/`USE SCHEMA` plus `SELECT, MODIFY` on the two lab tables only.
-   ✔ lab (verified: `SELECT current_user()` over JDBC returns the SP)
+3. **Least-privilege grants** per
+   [databricks-requirements.md → Access](databricks-requirements.md#access)
+   (lab: the two lab tables only). ✔ lab (verified: `SELECT current_user()`
+   over JDBC returns the SP)
 4. **Store the secret out of config:** lab → `secrets/databricks.env` +
    `boot.properties` substitution into the encrypted
    `customSensitiveConfiguration`; AIC → ESVs referenced by the provisioner
@@ -186,8 +186,8 @@ per workspace (e.g. the tenant's).
    `AuthMech=11;Auth_Flow=1;OAuth2ClientId/OAuth2Secret` at init, replacing
    any auth params in the base URL. ✔ lab — acceptance as the SP,
    confirmed by Databricks query history
-6. **Validate token refresh over a held-open pool:** pool `maxAge=3000000`
-   (50 min) recycles connections inside the 1-hour token window. ✔ lab —
+6. **Validate token refresh over a held-open pool** (pool `maxAge`, see
+   Authentication above). ✔ lab —
    soak 9/9 over 80 min across the token boundary
    (`databricks/soak-test.sh`).
    Note: after an IDM restart against a cold serverless
@@ -299,9 +299,8 @@ requires `^[a-z0-9]*$` [documented], and the stricter rule satisfies both.
 
 Client and role names follow Ping's own examples (`myrcs1-client`,
 `myrcs1-client-authorized`; the built-in `RCSClient` maps to
-`rcsclient-authorized`). (The lab still uses `rcs0`, `rcs1`,
-`rcsdatabricks` and one shared login; the connector and the cluster sharing
-one name is [to test].)
+`rcsclient-authorized`). The connector and the cluster sharing one name is
+[to test]. Lab status: [plan.md](plan.md).
 
 Setting one up in AIC: [README → Runbook → AIC: one RCS cluster per
 system](../README.md#aic-one-rcs-cluster-per-system).
@@ -319,9 +318,10 @@ overlay (secret-store binding and a ServiceAccount annotation):
 | Pod identity | ServiceAccount + federated token | Workload Identity | EKS Pod Identity / IRSA | Workload Identity Federation |
 | Secret delivery | Secrets Store CSI driver or External Secrets Operator | Key Vault | Secrets Manager | Secret Manager |
 | Egress to AIC + Databricks (443) | NetworkPolicy (FQDN rules need Cilium or a firewall) | NAT Gateway / LB outbound | NAT Gateway | Cloud NAT |
-| Egress idle timeout | RCS websocket ping every 60 s (keep it on) | NAT GW 4 min default; AKS LB outbound 30 min | NAT GW 350 s, fixed (then RST) | Cloud NAT 1200 s default, configurable |
+| Egress idle timeout ([sources](rcs-kubernetes-research.md#sources)) | RCS websocket ping every 60 s (keep it on) | NAT GW 4 min default; AKS LB outbound 30 min | NAT GW 350 s, fixed (then RST) | Cloud NAT 1200 s default, configurable |
 | amd64 image build | multi-arch `buildx` | ACR Tasks | CodeBuild | Cloud Build |
 
 Locally (T3), plain Kubernetes Secrets are mounted at the same path a CSI
 volume would use, so the pod is identical across providers. Kubernetes
-version: pin a minor supported by the target provider (the lab uses 1.35).
+version: pin a minor supported by the target provider (lab versions:
+[README → What you need](../README.md#what-you-need)).

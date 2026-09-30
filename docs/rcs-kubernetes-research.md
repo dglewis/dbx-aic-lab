@@ -65,9 +65,9 @@ configure-server].
   1.5.20.35).
 - Client mode: `connectorserver.url` (space-separated in file,
   comma-separated in `OPENICF_OPTS`), `connectorServerName`, `hostId`,
-  `tokenEndpoint`, `clientId`, `clientSecret`, `scope=fr:idm:*`,
-  `webSocketConnections=2`, `connectionTtl=300`, `housekeepingInterval=20`,
-  `groupCheckInterval=60`, `newConnectionsInterval=10`, `proxy*`.
+  `tokenEndpoint`, `clientId`, `clientSecret`, `scope`, interval and
+  connection properties, `proxy*`. Values to set for AIC: README → Runbook
+  → "AIC: one RCS cluster per system".
 
 **IDM side.** New `conf/provisioner.openicf.connectorinfoprovider.json`:
 - server mode → `remoteConnectorServers: [{name, host, port, useSSL, key, …}]`
@@ -163,12 +163,10 @@ probes, and jars via ConfigMap (1 MiB cap — the Databricks driver won't fit).
   (each holds its own JDBC pool).
 
 **Networking.** Client mode: egress only — 443 to the tenant (`/openicf/N`
-websockets + AM token endpoint) and DNS; no Service. Tenant URLs: dev
-`/openicf/0`; staging/prod `/0 /1 /2` [D]. Keepalive defaults (ping 60 s,
-TTL 300 s) are under every major provider's egress idle timeout — Azure NAT
-Gateway 4 min default, AKS LB outbound 30 min [D MS]; AWS NAT Gateway 350 s,
-fixed, then RST [D AWS]; Google Cloud NAT 1200 s default for established
-TCP, configurable [D GCP]. Never set `pingPongInterval=0` in a cloud.
+websockets + AM token endpoint) and DNS; no Service. The keepalive
+defaults are under every major provider's egress idle timeout (values:
+design.md → Cloud-provider neutrality) [D MS, D AWS, D GCP]. Never set
+`pingPongInterval=0` in a cloud.
 Multi-region HA changes tenant IPs — allow egress by FQDN, not IP. The
 Databricks JDBC driver needs its own proxy settings if a proxy is used.
 
@@ -239,10 +237,7 @@ Recommendation: **minikube + vfkit driver + containerd, K8s v1.35.0**.
 - Fallback: Colima + k3s (MIT, Rosetta for amd64 runs). kind/k3d need a
   container runtime this Mac doesn't have.
 
-Setup (verify against minikube 1.38 docs before running — hard rule 1):
-`brew install vfkit` → `minikube delete` → `minikube start -p rcs
---driver=vfkit --container-runtime=containerd --kubernetes-version=v1.35.0
---cpus=2 --memory=4g`.
+Setup commands: README → Runbook → Kubernetes path.
 
 ## Licensing scan (2026-09-29)
 
