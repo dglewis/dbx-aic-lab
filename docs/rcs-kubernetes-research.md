@@ -1,9 +1,8 @@
 # Research — Java RCS, then RCS on Kubernetes
 
-Status: research only, 2026-09-29. Nothing here is built yet. Distilled
-into [design.md](design.md) ("Connector vs RCS", "Topology") and the
-Phase 2 gates in [plan.md](plan.md); this file keeps the evidence and the
-open questions. Step names match plan.md Phase 2; "Tenant" is plan.md Phase 3.
+Background research, started 2026-09-29. Current design:
+[design.md](design.md) ("Connector vs RCS", "Topology"); build status:
+[plan.md](plan.md). This file keeps the evidence and the open questions. Step names match plan.md Phase 2; "Tenant" is plan.md Phase 3.
 
 Tags: **[D]** official vendor doc (Ping, Microsoft, AWS, Google Cloud),
 **[IMG]** verified by inspecting the official RCS image (layers + bytecode),
@@ -28,11 +27,6 @@ isn't compatible with PingOne Advanced Identity Cloud" [D configure-server].
 The server-mode row was run once as a stepping stone (it proved remote
 hosting works) and has no production use for this project.
 
-## baseline — baseline status
-
-Blocked on 2026-09-29 by Databricks-side issues (warehouse won't start,
-PAT invalid) — details and diagnosis in
-[spike-results.md](spike-results.md#2026-09-29--baseline-blocked-warehouse-wont-start-pat-invalid).
 
 ## Java RCS — facts that shape the RCS-on-Mac steps
 
@@ -79,8 +73,9 @@ configure-server].
 - server mode → `remoteConnectorServers: [{name, host, port, useSSL, key, …}]`
   (IDM 8.1.1 jar reads `useSSL`, not the docs' `usessl` [L] — verify);
 - client mode → `remoteConnectorClients` (RCS dials `wss://<idm>:8443/openicf`) [D];
-- HA → `remoteConnectorServersGroup` / `remoteConnectorClientsGroup` with
-  `algorithm: failover|roundrobin` [D].
+- HA → a group with `algorithm: failover|roundrobin` [D]; IDM 8.1.1 reads
+  client-mode groups from the top-level `remoteConnectorClientsGroups`
+  (Unknowns #10).
 The provisioner gains `connectorRef.connectorHostRef: "<name>"`; `&{}` is
 not allowed inside `connectorRef` [D property-substitution]. Websocket is
 the only protocol since IDM 7 [D removed-functionality].
@@ -160,14 +155,10 @@ probes, and jars via ConfigMap (1 MiB cap — the Databricks driver won't fit).
 
 **Topology / HA:**
 - Documented HA = several **distinctly named** connector servers in an AIC
-  Server Cluster (IDM `remoteConnectorClientsGroup`), `failover` or
-  `roundrobin`; all members need identical jars/scripts [D sync-identities,
-  rcs-docker]. Same-name replicas are **not documented** (a `hostId`
-  property exists) — test before relying on it.
-- → StatefulSet, stable names `rcs-0`, `rcs-1`, each registered in AIC with
-  its own access rule. Prefer `failover` (roundrobin may split paged recon).
-- Name regex conflicts across docs (`^[a-z0-9]*$` vs hyphens allowed) — test
-  whether `rcs-0` is accepted or use names like `rcs0`.
+  Server Cluster, `failover` or `roundrobin`; all members need identical
+  jars/scripts [D sync-identities, rcs-docker]. Same-name replicas are
+  **not documented** (a `hostId` property exists). Resolved (naming,
+  algorithm): Unknowns #10; decision in design.md.
 - Schedules and the CDF sync token live in IDM/AIC; RCS pods are stateless
   (each holds its own JDBC pool).
 
@@ -181,10 +172,9 @@ TCP, configurable [D GCP]. Never set `pingPongInterval=0` in a cloud.
 Multi-region HA changes tenant IPs — allow egress by FQDN, not IP. The
 Databricks JDBC driver needs its own proxy settings if a proxy is used.
 
-**Secrets.** RCS reads only file + `-D`. Pattern: K8s Secret (locally) or
-cloud secret store via Secrets Store CSI or External Secrets Operator
-(Key Vault / Secrets Manager / Secret Manager) → small wrapper entrypoint → `-D` in
-`OPENICF_OPTS`. `-D` values are visible in `/proc/1/cmdline` inside the pod.
+**Secrets.** RCS reads only file + `-D` [IMG]. `-D` values set directly in
+`OPENICF_OPTS` are visible in `/proc/1/cmdline`; a JDK @argfile avoids that
+(as built — design.md → Topology).
 Use a **dedicated OAuth client and a separate role per connector server**:
 "Ping Identity recommends that you migrate each of these connector servers
 to use specific OAuth 2.0 clients" and "create a separate role for each

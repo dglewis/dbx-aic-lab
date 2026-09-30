@@ -8,8 +8,7 @@ A spike lab proving a bidirectional ICF connector between Databricks and
 PingIDM/AIC. Read in this order before changing anything:
 `docs/adr-001-connector-selection.md` → `docs/adr-002-databricks-authentication.md` →
 `docs/design.md` → `docs/plan.md` →
-`docs/spike-results.md`. Phase 1 is complete; Phase 2 (RCS on the plain
-JVM, then Kubernetes — gated, see plan.md) is next, with background in
+`docs/spike-results.md`. Current status: `docs/plan.md`; background in
 `docs/rcs-kubernetes-research.md`. The repo keeps **both** paths runnable
 on purpose; never retire the plain-JVM path in favour of Kubernetes.
 
@@ -56,7 +55,7 @@ on purpose; never retire the plain-JVM path in favour of Kubernetes.
   the encrypted `customSensitiveConfiguration` property. The scripted-sql
   customizer is a **plain script body** with `configuration` bound — the
   scripted-REST `customize { init {…} }` DSL breaks script loading.
-- Known gotchas: JDBC URL needs `EnableArrow=0` on Java 17+; values with
+- Known gotchas: JDBC URL needs `EnableArrow=0` (why: `secrets/databricks.env.example`); values with
   `;` in the sourced env file must be double-quoted; after deploy/restart
   the first M2M connect against a cold warehouse 404s routes until the pool
   establishes (the test suite's readiness gate handles this).
@@ -66,7 +65,7 @@ on purpose; never retire the plain-JVM path in favour of Kubernetes.
 ```bash
 # Lab up? (DS on 31389, IDM on 8443 — see README runbook)
 curl -k -u openidm-admin:openidm-admin https://localhost:8443/openidm/info/ping
-idm-config/deploy.sh [local|rcs]      # push tracked config to runtime (rcs: via local RCS)
+idm-config/deploy.sh <topology>       # local | rcs-client | rcs-k8s | rcs — see the README runbook
 cd test && npm test                   # 16 checks; writes test/runs/ + JUnit XML
 npm run test:unit                     # offline unit tests (auth selection); run from test/
 ```

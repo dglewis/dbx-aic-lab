@@ -20,12 +20,10 @@ is logged in [k8s-dev-experience.md](docs/k8s-dev-experience.md). The
 connector-vs-RCS distinction, how each scales, and how RCS availability
 overlays Kubernetes are in [design.md](docs/design.md#connector-vs-rcs).
 
-> **Status: spike/prototype, not production.** Phase 1 (in-process connector)
-> is complete and evidence-backed — CRUD, paging, filtered queries, and
-> CDF-based liveSync including delete detection, authenticated as a
-> service principal via OAuth M2M. Phase 2 (RCS on the plain JVM, then on
-> Kubernetes) is researched and not yet built. Nothing here has been
-> hardened, load-tested, or security-reviewed. Copy patterns, not guarantees.
+> **Status: spike/prototype, not production.** Progress by phase:
+> [plan.md](docs/plan.md); evidence: [spike-results.md](docs/spike-results.md).
+> Nothing here has been hardened, load-tested, or security-reviewed. Copy
+> patterns, not guarantees.
 
 ![Architecture](docs/architecture.svg)
 
@@ -334,9 +332,7 @@ Sources (Ping): [Sync identities](https://docs.pingidentity.com/pingoneaic/ident
 [Multi-region high availability FAQ](https://docs.pingidentity.com/pingoneaic/tenants/environments-architecture-multi-region-faq.html)
 
 Secrets (service-principal OAuth credentials, optional PAT, warehouse HTTP path) live in untracked `*.env` /
-`secrets/` — see `.gitignore`. Sync token format, if timestamp-based:
-`yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'` (UTC, full microseconds, column type
-`TIMESTAMP` not `TIMESTAMP_NTZ`).
+`secrets/` — see `.gitignore`.
 
 ## License
 

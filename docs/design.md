@@ -1,9 +1,7 @@
 # Design — Databricks ⇄ PingAIC bidirectional connector
 
-Status: sections up to "Topology" describe the as-built phase-1 lab.
-"Topology" onward is the phase-2/3 **target** — each claim is tagged
-documented or to-be-tested, and becomes as-built as the gates in
-[plan.md](plan.md) pass. Decisions cite [ADR-001](adr-001-connector-selection.md);
+Describes the current design; claims are tagged [documented],
+[verified] or [to test]. Build status: [plan.md](plan.md). Decisions cite [ADR-001](adr-001-connector-selection.md);
 research backing the target is in [rcs-kubernetes-research.md](rcs-kubernetes-research.md).
 
 ## Components
@@ -14,7 +12,7 @@ research backing the target is in [rcs-kubernetes-research.md](rcs-kubernetes-re
 | ICF connector | CRUD + sync over JDBC | **ScriptedSQL (Groovy)** — decided per ADR-001 (auth posture + topology); bundled in IDM 8.1.1 |
 | JDBC driver | Wire protocol | OSS `databricks-jdbc` 2.7.3, class `com.databricks.client.jdbc.Driver` (verified from jar), in `openidm/lib/` |
 | Sync engine | Recon, liveSync, mappings | Local PingIDM 8.1.1 (DS-backed) standing in for AIC — same engine, configs port to tenant |
-| RCS | Connector host in production topology | Phase 2 (local, server mode) → phase 3 (AIC tenant, client mode) |
+| RCS | Connector host in production topology | Client mode — see Topology |
 
 ### Connector vs RCS
 
@@ -30,7 +28,8 @@ Two different things that are easy to conflate — and they scale differently.
 | Scales | **Up, inside each host** — pool size, pod CPU/memory | **Out, for availability** — more RCS instances, each separately named, grouped in a cluster |
 
 Consequences:
-- One RCS hosts many connectors; you don't add an RCS per target system.
+- An RCS *can* host many connectors, but this design gives each external
+  system its own RCS cluster (see "One RCS cluster per external system").
 - Every RCS instance opens its **own** JDBC pool: Databricks connections ≈
   RCS instances × pool size. The warehouse, not RCS count, bounds throughput.
 - Adding RCS instances adds no sync capacity: liveSync/recon schedules and
@@ -44,7 +43,7 @@ Both tables: an ID, a second ID, a datetime stamp. Delta, Unity Catalog.
 
 - **Inbound source:** `<catalog>.idm_lab.business_records`
   `record_id STRING` (key), `ref_id STRING`, `last_modified TIMESTAMP`
-  Change Data Feed enabled (serves the ScriptedSQL sync path if needed).
+  Change Data Feed enabled — the sync path (see Sync / change detection).
 - **Outbound target:** `<catalog>.idm_lab.outbound_records`
   same shape, disjoint data.
 
@@ -227,7 +226,7 @@ filesystem, so `&{idm.instance.dir}` no longer applies), a new
 | Job | Layer | Mechanism |
 |---|---|---|
 | Keep RCS processes alive | Kubernetes | restart crashed pods, reschedule off failed/drained nodes, hold replica count, spread across nodes/zones |
-| Route each operation to a live RCS; fail over | RCS / AIC | Server Cluster in AIC (`remoteConnectorClientsGroup` in IDM), `failover` or `roundrobin` [documented] |
+| Route each operation to a live RCS; fail over | RCS / AIC | Server Cluster in AIC (`remoteConnectorClientsGroups` in IDM 8.1.1), `failover` or `roundrobin` [documented; key name verified] |
 
 They overlap only on "redundancy". A client-mode RCS connects **outbound**,
 so no Kubernetes Service sits in the traffic path and Kubernetes cannot
@@ -246,12 +245,12 @@ Kubernetes: StatefulSet "rcs", replicas: 2
  └─ pod rcs-1 → RCS name rcs1 → Databricks connector + JDBC pool ──► Databricks
 ```
 
-Target Kubernetes decisions:
+Kubernetes decisions:
 - **StatefulSet**, one stable pod name per registered RCS name — HA via
   distinctly named members of a cluster is the documented model
-  [documented]; same-name replicas are undocumented [to test].
+  [documented]; same-name replicas are undocumented and not used.
 - **`failover`**, not `roundrobin`, so paged recon doesn't split across
-  pods [inference — to test].
+  pods [inference; failover verified 2026-09-30].
 - **Fixed replica count, no autoscaling** — each member needs a registration
   and access rule in AIC.
 - **Spread + PodDisruptionBudget** so node drains/upgrades never take both.
@@ -260,14 +259,16 @@ Target Kubernetes decisions:
   Groovy scripts, our own `ConnectorServer.properties` and `logback.xml`.
   Connector config stays in IDM/AIC and needs no redeploy.
 - **Secrets**: the only RCS-side secret is its own credential (server key or
-  OAuth client secret), passed as `-D` via `OPENICF_OPTS` — RCS reads no env
-  vars or placeholders [verified in image]. The Databricks secret stays in
+  OAuth client secret) — RCS reads no env vars or placeholders [verified in
+  image], so it arrives as `-D` options in a JDK @argfile mounted from a
+  Kubernetes Secret and referenced by `OPENICF_OPTS`, which keeps it out of
+  the process list [verified]. The Databricks secret stays in
   IDM/AIC and reaches the connector in its configuration, which is why
   TLS/`wss` is mandatory [documented: GuardedString is only default-key
   encrypted in transit].
 - **Probes**: RCS has no health endpoint and no shutdown hook [verified in
-  image]; liveness via connection check or external `testConnectorServers`
-  [to test].
+  image]; startup/readiness/liveness check for an ESTABLISHED socket to the
+  upstream port [verified 2026-09-30].
 
 ### One RCS cluster per external system
 
