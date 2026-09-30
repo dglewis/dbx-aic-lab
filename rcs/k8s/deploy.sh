@@ -9,7 +9,7 @@ set -a; source secrets/rcs.env; set +a
 kubectl apply -f rcs/k8s/manifests/rcs.yaml >/dev/null
 # Secret content is a JDK @argfile; built from a pipe, never echoed.
 printf '%s\n' "-Dconnectorserver.principal=$RCS_IDM_PRINCIPAL" "-Dconnectorserver.password=$RCS_IDM_PASSWORD" \
-  | kubectl -n db-conn create secret generic rcs-idm-credentials --from-file=credentials.args=/dev/stdin \
+  | kubectl -n dbx-aic-lab create secret generic rcs-idm-credentials --from-file=credentials.args=/dev/stdin \
       --dry-run=client -o yaml | kubectl apply -f - >/dev/null
-kubectl -n db-conn rollout restart statefulset/rcs >/dev/null
-kubectl -n db-conn rollout status statefulset/rcs --timeout=180s
+kubectl -n dbx-aic-lab rollout restart statefulset/rcs >/dev/null
+kubectl -n dbx-aic-lab rollout status statefulset/rcs --timeout=180s

@@ -19,7 +19,7 @@ SP=$(cat "$SEC/storepass")
 cp "$KS" "$KS.bak-$(date +%Y%m%d%H%M%S)"
 "$KT" -delete -alias openidm-localhost -keystore "$KS" -storetype JCEKS -storepass "$SP"
 "$KT" -genkeypair -alias openidm-localhost -keyalg RSA -keysize 2048 -validity 3650 \
-  -dname "CN=localhost, O=db-conn lab" \
+  -dname "CN=localhost, O=dbx-aic-lab lab" \
   -ext "SAN=dns:localhost,dns:host.minikube.internal,ip:127.0.0.1" \
   -keystore "$KS" -storetype JCEKS -storepass "$SP" -keypass "$SP"
 "$KT" -list -v -alias openidm-localhost -keystore "$KS" -storetype JCEKS -storepass "$SP" 2>/dev/null \

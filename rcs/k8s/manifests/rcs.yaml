@@ -4,13 +4,13 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: db-conn
+  name: dbx-aic-lab
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: rcs
-  namespace: db-conn
+  namespace: dbx-aic-lab
 spec:
   serviceName: rcs          # client mode: no inbound traffic, so no Service object
   replicas: 1
@@ -28,7 +28,7 @@ spec:
         fsGroup: 11111          # Secret files get this group, so the pod can read them
       containers:
         - name: rcs
-          image: db-conn-rcs:dev
+          image: dbx-aic-lab-rcs:dev
           imagePullPolicy: Never      # built inside the minikube node by build.sh
           env:
             # JDK @argfile with -Dconnectorserver.principal/password: keeps the
