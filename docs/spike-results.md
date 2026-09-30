@@ -315,6 +315,21 @@ scripts, properties, logback, truststore), client mode to IDM on the Mac via
 - The first TLS attempt from the node to IDM timed out once, then worked; the
   macOS firewall permits Java (IDM) but blocks other listeners by default.
 
+## 2026-09-30 — revalidation after the rename: every path 16/16
+
+After the rename to `dbx-aic-lab` and the move of the local folder, IDM
+answered `info/ping` with `Module "router-authz" not found`: DS and IDM were
+still running from the deleted old path, and IDM's bundle cache held
+absolute paths. Restarting both from the new path with the cache cleared
+fixed it (runbook: "After moving or renaming the repo folder"). The k8s
+namespace, image tag and lab certificate were renamed at the same time.
+
+- In-process (`lab`): **16/16** (`acceptance-node-2026-09-30T13-20-41.log`);
+  unit tests 12/12; `smoke-test.sh` OK as the SP;
+  `acceptance-test.sh` 15/15 (`acceptance-20260930-052227.log`).
+- RCS on the Mac, client mode: **16/16** (`acceptance-node-2026-09-30T13-23-49.log`).
+- One RCS pod in the renamed namespace: **16/16** (`acceptance-node-2026-09-30T13-25-39.log`).
+
 ## 2026-09-30 — two RCS pods in a failover group (T3): 16/16
 
 Two pods (`rcs-0`, `rcs-1`) in the StatefulSet, each registering as its own
