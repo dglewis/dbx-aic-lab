@@ -5,7 +5,7 @@
 #   - databricks.* substitution values -> resolver/boot.properties
 #     (values sourced from secrets/databricks.env; never tracked)
 #
-# Usage: idm-config/deploy.sh [local|rcs-client|rcs]      (default: local)
+# Usage: idm-config/deploy.sh [local|rcs-client|rcs-k8s|rcs]      (default: local)
 #   local      — connector in-process in IDM (topology T0)
 #   rcs-client — connector hosted by the local Java RCS in client mode (T2,
 #                the target — AIC supports only client mode): adds
@@ -14,6 +14,9 @@
 #                limited to the openicf endpoint for "rcslocal"; password
 #                rcs.idm.password in boot.properties — first deploy needs an
 #                IDM restart). Deploy the RCS first: rcs/deploy.sh client, rcs/run.sh.
+#   rcs-k8s    — as rcs-client, but the RCS runs as a pod (T3): scriptRoots is
+#                the path inside the image (/opt/openicf/scripts/databricks).
+#                Deploy the pod first: rcs/k8s/build.sh, rcs/k8s/deploy.sh.
 #   rcs        — stepping stone only: RCS in server mode (T1):
 #           adds topology/rcs/*.json, points the provisioner at the RCS
 #           (connectorHostRef — &{} isn't allowed in connectorRef, so it is
@@ -25,7 +28,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 TOPOLOGY="${1:-local}"
-case "$TOPOLOGY" in local|rcs|rcs-client) ;; *) echo "usage: $0 [local|rcs-client|rcs]"; exit 2 ;; esac
+case "$TOPOLOGY" in local|rcs|rcs-client|rcs-k8s) ;; *) echo "usage: $0 [local|rcs-client|rcs-k8s|rcs]"; exit 2 ;; esac
+# rcs-k8s uses the rcs-client IDM config; only the RCS-side script path differs.
+TOPO_DIR="$TOPOLOGY"; [[ "$TOPOLOGY" == rcs-k8s ]] && TOPO_DIR=rcs-client
 
 set -a; source secrets/databricks.env; set +a
 : "${DATABRICKS_JDBC_URL:?missing in secrets/databricks.env}"
@@ -50,7 +55,7 @@ if [[ "$TOPOLOGY" == rcs ]]; then
   set -a; source secrets/rcs.env; set +a
   : "${RCS_KEY:?missing in secrets/rcs.env}"
   props+=("rcs.key=${RCS_KEY}")
-elif [[ "$TOPOLOGY" == rcs-client ]]; then
+elif [[ "$TOPO_DIR" == rcs-client ]]; then
   set -a; source secrets/rcs.env; set +a
   : "${RCS_IDM_PASSWORD:?missing in secrets/rcs.env}"
   props+=("rcs.idm.password=${RCS_IDM_PASSWORD}")
@@ -65,8 +70,8 @@ done
 # conf last: dropping the provisioner triggers connector activation
 CONF=runtime/openidm/conf
 if [[ "$TOPOLOGY" == rcs* ]]; then
-  cp "idm-config/topology/$TOPOLOGY/provisioner.openicf.connectorinfoprovider.json" "$CONF/"
-  if [[ "$TOPOLOGY" == rcs-client ]]; then
+  cp "idm-config/topology/$TOPO_DIR/provisioner.openicf.connectorinfoprovider.json" "$CONF/"
+  if [[ "$TOPO_DIR" == rcs-client ]]; then
     # Least-privilege RCS login: merge our STATIC_USER module and openicf
     # access rule into IDM's own config (added once; vendor files not tracked).
     T=idm-config/topology/rcs-client
@@ -80,6 +85,7 @@ if [[ "$TOPOLOGY" == rcs* ]]; then
     mv "$CONF/access.json.tmp" "$CONF/access.json"
   fi
   RCS_SCRIPT_ROOT="$PWD/rcs/openicf/scripts/databricks"
+  [[ "$TOPOLOGY" == rcs-k8s ]] && RCS_SCRIPT_ROOT=/opt/openicf/scripts/databricks
   for f in idm-config/conf/*.json; do
     if [[ "$(basename "$f")" == provisioner.openicf-databricks.json ]]; then
       jq --arg root "$RCS_SCRIPT_ROOT" \

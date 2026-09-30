@@ -1,0 +1,52 @@
+# One RCS pod in client mode, connecting out to IDM on the Mac.
+# Written for this repo. The Secret "rcs-idm-credentials" is created by
+# rcs/k8s/deploy.sh from secrets/rcs.env — never committed.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: db-conn
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rcs
+  namespace: db-conn
+spec:
+  serviceName: rcs          # client mode: no inbound traffic, so no Service object
+  replicas: 1
+  selector:
+    matchLabels: { app: rcs }
+  template:
+    metadata:
+      labels: { app: rcs }
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 11111
+        runAsGroup: 0
+        fsGroup: 11111          # Secret files get this group, so the pod can read them
+      containers:
+        - name: rcs
+          image: db-conn-rcs:dev
+          imagePullPolicy: Never      # built inside the minikube node by build.sh
+          env:
+            # JDK @argfile with -Dconnectorserver.principal/password: keeps the
+            # credentials out of the process list and out of env vars.
+            - name: OPENICF_OPTS
+              value: "@/var/run/rcs-credentials/credentials.args"
+          volumeMounts:
+            - name: idm-credentials
+              mountPath: /var/run/rcs-credentials
+              readOnly: true
+          resources:
+            requests: { cpu: 250m, memory: 768Mi }
+            limits: { memory: 1Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+      volumes:
+        - name: idm-credentials
+          secret:
+            secretName: rcs-idm-credentials
+            defaultMode: 0440         # owner + fsGroup read only
