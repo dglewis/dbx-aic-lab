@@ -314,3 +314,41 @@ scripts, properties, logback, truststore), client mode to IDM on the Mac via
   puts connector/Groovy output in `kubectl logs`.
 - The first TLS attempt from the node to IDM timed out once, then worked; the
   macOS firewall permits Java (IDM) but blocks other listeners by default.
+
+## 2026-09-30 — two RCS pods in a failover group (T3): 16/16
+
+Two pods (`rcs-0`, `rcs-1`) in the StatefulSet, each registering as its own
+connector server (`rcs0`, `rcs1` — derived from the pod name, as names must
+match `^[a-z0-9]*$`). IDM puts both in the failover group `rcsdatabricks`;
+the provisioner's `connectorHostRef` points at the group. Both pods use one
+IDM login (role `internal/role/rcs-databricks`). Probes check for an
+ESTABLISHED socket to IDM; PodDisruptionBudget `minAvailable: 1`.
+
+- **16/16** through the group with one pod
+  (`acceptance-node-2026-09-30T16-39-14.log`) and with two
+  (`acceptance-node-2026-09-30T16-41-29.log`), profile `k8s`.
+- IDM 8.1.1 reads the group from the top-level key
+  `remoteConnectorClientsGroups` (plural). Ping's page shows it inside
+  `remoteConnectorClients`; that form was silently ignored ("connector not
+  available"). Key name confirmed from IDM's own bundle.
+- Probe check: passes on port 8443 (connected), fails on an unused port.
+
+**Pod kill, first pass** (`rcs/k8s/failover-test.sh`; logs
+`failover-ops-20260930T164414Z.log`, `failover-livesync-20260930T165023Z.log`):
+- IDM saw the killed pod's socket close within ~1 s and sent the next
+  request to `rcs1`.
+- `rcs1` then failed every read: its JDBC URL had no M2M settings. On a
+  freshly started RCS, data operations fail until IDM's connector *test*
+  action runs on it once (the test runs the customizer). Reproduced on
+  `rcs-0` after a restart: 25 reads over 25 s all failed, then one test call
+  fixed it. The suite's readiness gate calls test, which is why earlier runs
+  never showed this; it explains the "first-init miss" noted under T1.
+- liveSync, pod killed 4 s into a 300,000-row commit: the stored token stayed
+  at the baseline (186) — nothing skipped; the next complete run moved it
+  to 190. But the interrupted call never returned an error, and the two
+  liveSync calls made during the following ~10 minutes hung (IDM logged
+  "Failed to find request response target" for each delta). This test was
+  not clean — each call overlapped the still-pending one, checks were 5
+  minutes apart — so no recovery time is claimed.
+- Both open points are recorded as known concerns (plan.md; research doc
+  Unknowns #14, #15), not blockers.

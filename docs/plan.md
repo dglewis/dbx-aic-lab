@@ -146,11 +146,19 @@ Kubernetes — one pod in minikube, client mode (T3) — working ✅ 2026-09-29:
 - [x] `PROFILE=k8s` → **16/16**
 
 Kubernetes — high availability (T3, 2 replicas):
-- [ ] StatefulSet, Secrets as files, probes, PodDisruptionBudget, IDM
-      failover group
-- [ ] Pod kill mid-recon/liveSync: error surfaced, failover time, sync-token
-      consistency
-- [ ] Record results; decide StatefulSet/naming/algorithm → ADR-003
+- [x] StatefulSet, Secrets as files, probes, PodDisruptionBudget, IDM
+      failover group (`rcsdatabricks`: `rcs0`, `rcs1`, one shared login) —
+      **16/16** with 2 pods, 2026-09-30
+- [x] Pod kill, first pass (`rcs/k8s/failover-test.sh`): failover detected in
+      ~1 s; token consistent on an interrupted liveSync
+- [ ] Record the decisions → ADR-003 (StatefulSet, naming, failover algorithm)
+
+Known concerns — recorded, not blocking; revisit before the tenant step
+(detail: research doc, Unknowns #14, #15):
+- [ ] A fresh RCS pod can't reach Databricks until IDM's connector test runs
+      on it — hits every pod restart and every failover
+- [ ] liveSync interrupted by a pod kill hangs instead of failing; rerun
+      cleanly (no overlapping calls) before concluding anything
 
 ## Phase 3 — real AIC tenant
 

@@ -265,10 +265,12 @@ minikube start -p rcs --driver=vfkit --container-runtime=containerd \
 idm-config/lab-tls-cert.sh              # then restart IDM
 rcs/deploy.sh client                    # puts IDM's new cert in the RCS truststore
 rcs/k8s/build.sh                        # image built inside the node
-rcs/k8s/deploy.sh                       # Secret from secrets/rcs.env + StatefulSet
-idm-config/deploy.sh rcs-k8s            # IDM side (script path inside the pod)
+rcs/k8s/deploy.sh                       # Secret from secrets/rcs.env + StatefulSet (2 pods)
+idm-config/deploy.sh rcs-k8s            # IDM side: rcs0 + rcs1 in failover group rcsdatabricks
 cd test && PROFILE=k8s npm test
-# Stop any RCS on the Mac first — the pod uses the same name (rcslocal).
+rcs/k8s/failover-test.sh ops|livesync   # kill the active pod; log in test/runs/
+# A freshly started pod needs one connector test call before data operations
+# work (plan.md → known concerns); the suite's readiness gate makes it.
 ```
 
 Secrets (service-principal OAuth credentials, optional PAT, warehouse HTTP path) live in untracked `*.env` /

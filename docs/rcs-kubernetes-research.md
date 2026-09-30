@@ -185,8 +185,11 @@ Databricks JDBC driver needs its own proxy settings if a proxy is used.
 cloud secret store via Secrets Store CSI or External Secrets Operator
 (Key Vault / Secrets Manager / Secret Manager) → small wrapper entrypoint → `-D` in
 `OPENICF_OPTS`. `-D` values are visible in `/proc/1/cmdline` inside the pod.
-Use a **dedicated OAuth client per connector server** — resetting the shared
-`RCSClient` secret disconnects every RCS [D]. Databricks secret in AIC →
+A dedicated OAuth client is **optional** [D sync-identities]: every RCS uses
+the built-in `RCSClient` by default, and resetting its secret means
+reconfiguring every RCS that uses it. So give this system its own client,
+shared by all its connector servers — not one per server (nothing in the docs
+asks for that). Databricks secret in AIC →
 ESV `&{esv.…}` in the provisioner (encrypted `$crypto` values don't promote
 across environments [D]); whether an ESV works *inside* the
 `customSensitiveConfiguration` string is untested.
@@ -276,12 +279,14 @@ Headers and legal files only — not legal advice. Consequences are in
 | 5 | Local IDM 8.1.1 accepts client-mode RCS (auth method) | Client mode, Mac — **answered**: basic credentials via a STATIC_USER login (`connector-server-client`) plus an `openicf` access rule; without a rule IDM allows any authenticated user and warns |
 | 6 | Default RCS truststore validates the Databricks endpoint | Kubernetes, one pod — **answered**: yes (plus the lab IDM cert added) |
 | 7 | Custom logback puts Groovy output on stdout | Kubernetes, one pod — **answered**: yes, via our own `logback.xml` |
-| 8 | Pod kill mid-recon/liveSync: IDM error, failover time, sync-token consistency | Kubernetes, HA |
-| 9 | Client-mode liveness probe fidelity (`/proc/net/tcp` vs `testConnectorServers`) | Kubernetes, HA |
-| 10 | Same-name replicas vs distinct names + cluster; hyphens in names | Kubernetes HA / tenant |
+| 8 | Pod kill mid-recon/liveSync: IDM error, failover time, sync-token consistency | Kubernetes, HA — **partly answered** (2026-09-30): IDM sees the closed socket in ~1 s and routes to the next member; the stored token did not move on an interrupted liveSync (no skipped rows). Open: #14, #15 |
+| 9 | Client-mode liveness probe fidelity (`/proc/net/tcp` vs `testConnectorServers`) | Kubernetes, HA — **answered at socket level**: the ESTABLISHED-socket check passes when connected and fails on a port with no connection; agrees with `testConnectorServers`. A hung-but-connected RCS would still pass (untested) |
+| 10 | Same-name replicas vs distinct names + cluster; hyphens in names | Kubernetes HA — **answered**: distinct names per pod (`rcs0`, `rcs1`, from the pod name); names must match `^[a-z0-9]*$` [D configure-server], so no hyphens. The group goes under `remoteConnectorClientsGroups` (plural, top level) in IDM 8.1.1 — the documented placement inside `remoteConnectorClients` was ignored |
 | 11 | ESV inside `customSensitiveConfiguration` | Tenant |
 | 12 | Websocket idle survival through the provider's egress (NAT/LB) | Tenant |
 | 13 | Redistribution terms for a derived RCS image (ask Ping) | before tenant step |
+| 14 | A freshly started RCS fails every data operation (JDBC URL without the M2M settings) until IDM's connector **test** action runs on it once; test runs the customizer. By design or a framework defect? Affects every pod restart, not only failover | Known concern — revisit before tenant step (options: scheduled test call as a warm-up; ask Ping) |
+| 15 | liveSync interrupted by a pod kill never returned an error; liveSync calls made while it was pending hung, IDM logging "Failed to find request response target". Test was not clean (overlapping calls, 5-min checks) — rerun properly before drawing conclusions | Known concern — revisit with a clean test |
 
 ## Sources
 
