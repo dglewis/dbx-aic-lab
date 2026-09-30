@@ -35,6 +35,27 @@ on purpose; never retire the plain-JVM path in favour of Kubernetes.
    commit in the header. Check claims of "it works" against a run log;
    record the result in `docs/spike-results.md`, not the log itself.
 
+## Where things are documented
+
+Each fact, rule, procedure, value or status lives in **one** place; every
+other doc links to it. Before writing doc text, find its owner and edit
+there. When something changes, update the owner and search the other docs
+for stale copies in the same commit.
+
+| Kind of content | Owner |
+|---|---|
+| Status and progress, open tasks | `docs/plan.md` |
+| Current design and its rationale | `docs/design.md` |
+| Procedures (runbooks), versions, prerequisites | `README.md` |
+| Open questions, research evidence, vendor citations | `docs/rcs-kubernetes-research.md` (Unknowns table, Sources) |
+| What a Databricks team must provide | `docs/databricks-requirements.md` — a standalone handout; others link to it |
+| Licensing and redistribution | `NOTICE.md` |
+| Rules for agents | this file — pointers, not copies |
+
+Dated records keep their wording: `docs/spike-results.md` (what happened on
+a date) and the ADRs (what was decided and why). Don't restate them
+elsewhere as current guidance.
+
 ## Conventions
 
 - Naming (provisioners per system, object classes per dataset), the sync
