@@ -102,7 +102,7 @@ Baseline — connector in IDM (T0) ✅ 2026-09-29:
 Stepping stone — RCS on the Mac, server mode (T1) ✅ 2026-09-29 (not pursued further):
 - [x] RCS 1.5.20.36 extracted from the official image → `rcs/openicf/`
       (gitignored) by `rcs/fetch-rcs.sh`; JDK 21
-- [x] `rcs/` tooling (tracked, our own files): `conf/ConnectorServer.properties`,
+- [x] `rcs/` tooling (tracked, our own files): `conf/server/ConnectorServer.properties`,
       `deploy.sh`, `run.sh`; `idm-config/deploy.sh rcs` points IDM's
       provisioner at the RCS (`connectorHostRef`, RCS-side `scriptRoots`)
 - [x] Proven remote: with IDM's scriptedsql + driver jars removed, IDM lists
@@ -110,12 +110,19 @@ Stepping stone — RCS on the Mac, server mode (T1) ✅ 2026-09-29 (not pursued 
       customizer execute in the RCS
 - [x] `PROFILE=rcs` → **16/16**; switching back (`deploy.sh local`) → T0 16/16
 
-RCS on the Mac, client mode (T2) — next:
-- [ ] IDM `remoteConnectorClients`; RCS connects to `wss://localhost:8443/openicf`
-      and authenticates to IDM (no AM locally); trusts IDM's certificate
-- [ ] `PROFILE=rcs-client` → 16/16
-- [ ] Negatives: wrong credentials, RCS kill/recovery, script-edit reload;
-      token-boundary soak through the RCS
+RCS on the Mac, client mode (T2) — working ✅ 2026-09-29:
+- [x] `rcs/deploy.sh client` + `rcs/run.sh`: RCS connects to
+      `wss://localhost:8443/openicf`; IDM's certificate imported into the RCS
+      truststore (which keeps its public CAs for Databricks)
+- [x] `idm-config/deploy.sh rcs-client`: IDM `remoteConnectorClients`, provisioner
+      pointed at `rcslocal`
+- [x] Least-privilege login: RCS authenticates as `connector-server-client`
+      (a STATIC_USER login, only role `internal/role/rcs-rcslocal`) and an
+      `openicf` access rule admits only that role for `rcslocal`; confirmed in
+      IDM's authentication audit
+- [x] `PROFILE=rcs-client` → **16/16**
+- [ ] Negatives: wrong credentials / admin refused, RCS kill/recovery,
+      script-edit reload; token-boundary soak through the RCS
 
 Connector hardening (any topology; design.md → "Sync / change detection"):
 - [ ] `SyncScript`: fail loudly when the stored token exceeds the table's

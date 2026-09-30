@@ -212,7 +212,7 @@ one test profile each.
 |---|---|---|---|---|
 | T0 | In-process in local IDM | — | `lab` | as-built (phase 1) |
 | T1 | Java RCS on the host JVM | IDM → RCS (server mode, :8759) | `rcs` | as-built stepping stone only — no production use (AIC is client-mode only) |
-| T2 | Java RCS on the host JVM | RCS → IDM `wss://…/openicf` (client mode) | `rcs-client` | target — next |
+| T2 | Java RCS on the host JVM | RCS → IDM `wss://…/openicf` (client mode) | `rcs-client` | as-built (least-privilege login) |
 | T3 | RCS pod(s) in local Kubernetes (minikube) | RCS → IDM (client mode) | `k8s` | target |
 | T4 | RCS pods in a managed Kubernetes cluster | RCS → AIC tenant (client mode) | `tenant` | target (phase 3) |
 

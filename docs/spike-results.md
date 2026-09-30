@@ -257,3 +257,37 @@ JDK 21 in server mode; IDM connects on 8759 (`idm-config/deploy.sh rcs`).
   is also forwarded into IDM's log; the M2M customizer line went to the RCS
   console.
 - Run logs checked: no client secret, RCS key, host, warehouse ID or token.
+
+## 2026-09-29 — RCS client mode (T2): 16/16, least-privilege login
+
+The target mode: the RCS (1.5.20.36, host JDK 21) connects out to
+`wss://localhost:8443/openicf`; IDM has a `remoteConnectorClients` entry
+`rcslocal` (`idm-config/deploy.sh rcs-client`, `rcs/deploy.sh client`).
+
+- **16/16** first with the lab admin login
+  (`acceptance-node-2026-09-30T02-04-28.log`), then **16/16** with a
+  dedicated login (`acceptance-node-2026-09-30T02-08-07.log`).
+- Auth against self-hosted IDM (no AM): basic credentials
+  (`connectorserver.principal`/`password`). Without an `openicf` access rule,
+  IDM admits any authenticated user and logs "No openicf servlet access rule
+  defined, allowing request from openidm-admin". Now: a third STATIC_USER
+  login for the shipped internal user `connector-server-client` (password
+  from `boot.properties`, only role `internal/role/rcs-rcslocal`) plus an
+  access rule `{servlet: openicf, pattern: rcslocal, roles:
+  internal/role/rcs-rcslocal}`; IDM's authentication audit shows the RCS
+  websockets logging in as `connector-server-client`. A curl probe of the
+  endpoint returned 403 for every user — the probe was wrong, not evidence
+  either way; the negative test (admin refused) is still open.
+- TLS: IDM's self-signed certificate (`CN=localhost`, no SAN) imported into
+  the RCS truststore. The RCS sets the JVM-wide truststore from its own, so
+  that store must also keep the public CAs the Databricks driver needs.
+  A pod will reach IDM under another hostname — Kubernetes needs a cert with
+  a matching SAN.
+- The vendor start script echoes `OPENICF_OPTS` on `/run`; `rcs/run.sh`
+  passes the credentials in a JDK `@argfile` (mode 600) so only its path is
+  printed. Password found in neither the RCS console nor IDM's log.
+- IDM's client-mode template (`createConnectorServerCoreConfig`) uses
+  `useSSL`, as for server mode.
+- After a deploy the first connector test can land before the provisioner
+  finishes activating ("connector not available"); the suite's readiness
+  gate absorbs it.

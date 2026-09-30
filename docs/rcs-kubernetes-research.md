@@ -273,7 +273,7 @@ Headers and legal files only — not legal advice. Consequences are in
 | 2 | CustomizerScript/GuardedString path unchanged on RCS | server-mode step — **answered**: arrives as `GuardedString`, populates `propertyBag.oauth2`, customizer unchanged. One unexplained first-init miss (see spike-results) |
 | 3 | scriptedsql 1.5.20.36 + databricks-jdbc 2.7.3 on Java 21; `EnableArrow=0` still needed | server-mode step — **works** (16/16, driver in `openicf/lib/`); run with `EnableArrow=0`, necessity not retested |
 | 4 | Script-edit reload behaviour on RCS | Server mode (stepping stone) |
-| 5 | Local IDM 8.1.1 accepts client-mode RCS (auth method) | Client mode, Mac |
+| 5 | Local IDM 8.1.1 accepts client-mode RCS (auth method) | Client mode, Mac — **answered**: basic credentials via a STATIC_USER login (`connector-server-client`) plus an `openicf` access rule; without a rule IDM allows any authenticated user and warns |
 | 6 | Default RCS truststore validates the Databricks endpoint | Kubernetes, one pod |
 | 7 | Custom logback puts Groovy output on stdout | Kubernetes, one pod |
 | 8 | Pod kill mid-recon/liveSync: IDM error, failover time, sync-token consistency | Kubernetes, HA |

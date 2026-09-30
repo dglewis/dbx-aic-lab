@@ -124,7 +124,7 @@ The suite needs the live lab — it is a manual gate, not a CI job.
 | `idm-config/script/` | yes | ScriptedSQL Groovy scripts (one per ICF operation + customizer) |
 | `databricks/` | yes | Lab tooling: `smoke-test.sh` (JDBC connectivity), `apply-sql.sh` + `JdbcRunner.java` (run SQL over the driver), `sql/` (DDL, CDF setup, seed data) |
 | `test/` | yes | Node/Vitest acceptance suite (`cd test && npm install && npm test`) — IDM REST assertions + Databricks-native out-of-band checks over the SQL Statement Execution REST API; profile-driven (`PROFILE=lab\|tenant`, more per topology as phase 2 lands); writes `test/runs/acceptance-node-*.log` + JUnit XML. `test/unit/`: offline unit tests (`npm run test:unit`) |
-| `rcs/` | yes | RCS files we author: `fetch-rcs.sh`, `deploy.sh`, `run.sh`, `conf/ConnectorServer.properties` (Dockerfile and manifests to come) |
+| `rcs/` | yes | RCS files we author: `fetch-rcs.sh`, `deploy.sh`, `run.sh`, `conf/{client,server}/ConnectorServer.properties` (Dockerfile and manifests to come) |
 | `rcs/openicf/` | no (gitignored) | Extracted Java RCS distribution (proprietary) |
 | `docs/` | yes | ADR, design, plan, spike results — the narrative record |
 | `test/runs/` | no (gitignored) | Local HTTP request/response logs, one per acceptance/soak run |
@@ -220,16 +220,30 @@ mvn dependency:copy -Dartifact=com.databricks:databricks-jdbc:2.7.3 \
   -DoutputDirectory=runtime/openidm/lib/
 ```
 
+### Plain-JVM RCS path, client mode (topology T2 — the target)
+
+The RCS connects out to IDM, as it will to AIC.
+
+```bash
+cp secrets/rcs.env.example secrets/rcs.env   # RCS_IDM_PRINCIPAL=connector-server-client,
+                                             # RCS_IDM_PASSWORD=<random alphanumeric>
+rcs/fetch-rcs.sh                   # official image -> rcs/openicf/ (gitignored)
+rcs/deploy.sh client               # properties, IDM cert -> RCS truststore, scripts, driver
+idm-config/deploy.sh rcs-client    # IDM side: client entry, RCS login + openicf access rule
+# First time only: restart IDM — boot.properties (rcs.idm.password) is read at startup.
+rcs/run.sh                         # foreground; logs in rcs/openicf/logs/
+cd test && PROFILE=rcs-client npm test
+# Back to in-process: idm-config/deploy.sh local
+```
+
 ### Plain-JVM RCS path, server mode (stepping stone, topology T1)
 
 Server mode (IDM connects in to the RCS) isn't supported by AIC; this path
-proved the connector works when hosted on an RCS. The client-mode path
-replaces it once built.
+proved the connector works when hosted on an RCS.
 
 ```bash
-cp secrets/rcs.env.example secrets/rcs.env   # set RCS_KEY (alphanumeric)
-rcs/fetch-rcs.sh                   # official image -> rcs/openicf/ (gitignored)
-rcs/deploy.sh                      # properties + key, scripts, driver
+# secrets/rcs.env also needs RCS_KEY (alphanumeric)
+rcs/deploy.sh server               # properties + key, scripts, driver
 rcs/run.sh                         # foreground; logs in rcs/openicf/logs/
 idm-config/deploy.sh rcs           # point IDM's provisioner at the RCS
 # First time only: restart IDM — boot.properties (rcs.key) is read at startup.
