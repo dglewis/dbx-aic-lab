@@ -152,6 +152,10 @@ Kubernetes — high availability (T3, 2 replicas):
 - [x] Pod kill, first pass (`rcs/k8s/failover-test.sh`): failover detected in
       ~1 s; token consistent on an interrupted liveSync
 - [ ] Record the decisions → ADR-003 (StatefulSet, naming, failover algorithm)
+- [ ] Align the lab with the per-system layout and Ping's recommendations
+      (README → Runbook → "AIC: one RCS cluster per system"): rename to
+      `databricks0`/`databricks1`/cluster `databricks`; one login and role
+      per connector server instead of the shared login
 
 Known concerns — recorded, not blocking; revisit before the tenant step
 (detail: research doc, Unknowns #14, #15):
