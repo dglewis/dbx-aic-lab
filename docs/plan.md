@@ -148,17 +148,18 @@ Kubernetes — high availability (T3, 2 replicas):
 - [x] Record the decision → [ADR-003](adr-003-rcs-per-external-system.md)
       (one RCS cluster per external system); StatefulSet, naming and
       failover stay in design.md
-- [ ] Align the lab with the per-system layout and Ping's recommendations
-      (README → Runbook → "AIC: one RCS cluster per system"): rename to
+- [x] Align the lab with the per-system layout and Ping's recommendations:
       `databricks0`/`databricks1`/cluster `databricks`; one login and role
-      per connector server instead of the shared login
+      per connector server (incl. `rcslocal`) — **16/16** on both RCS paths,
+      2026-09-30
 
 Known concerns — recorded, not blocking; revisit before the tenant step
 (detail: research doc, Unknowns #14, #15):
 - [ ] A fresh RCS pod can't reach Databricks until IDM's connector test runs
       on it — hits every pod restart and every failover
-- [ ] liveSync interrupted by a pod kill hangs instead of failing; rerun
-      cleanly (no overlapping calls) before concluding anything
+- [ ] Requests lost between IDM and the RCS pods stall up to IDM's 900 s
+      group check — seen with a pod kill and, without one, while the Mac
+      slept; recheck with the Mac kept awake
 
 ## Phase 3 — real AIC tenant
 

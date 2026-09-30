@@ -303,8 +303,13 @@ requires `^[a-z0-9]*$` [documented], and the stricter rule satisfies both.
 
 Client and role names follow Ping's own examples (`myrcs1-client`,
 `myrcs1-client-authorized`; the built-in `RCSClient` maps to
-`rcsclient-authorized`). The connector and the cluster sharing one name is
-[to test]. Lab status: [plan.md](plan.md).
+`rcsclient-authorized`). The connector and its cluster can share one name
+(verified 2026-09-30: both `databricks`).
+
+In the lab, both pods mount one Secret holding every server's credentials
+file and each loads only its own; a StatefulSet can't give pods different
+Secrets. Full per-pod credential isolation would need one StatefulSet per
+server, or a secret store that scopes access per pod.
 
 Setting one up in AIC: [README → Runbook → AIC: one RCS cluster per
 system](../README.md#aic-one-rcs-cluster-per-system).

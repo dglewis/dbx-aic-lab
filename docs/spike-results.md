@@ -367,3 +367,29 @@ ESTABLISHED socket to IDM; PodDisruptionBudget `minAvailable: 1`.
   minutes apart — so no recovery time is claimed.
 - Both open points are recorded as known concerns (plan.md; research doc
   Unknowns #14, #15), not blockers.
+
+## 2026-09-30 — lab aligned with ADR-003: per-system names, per-server logins
+
+The Kubernetes RCS is now StatefulSet `databricks` (pods `databricks-0`,
+`databricks-1`) registering as `databricks0` and `databricks1` in IDM's
+failover cluster `databricks`. Each connector server has its own IDM login
+(`<server>-client`) whose only role may connect only as that server; the
+Mac RCS got its own (`rcslocal-client`).
+
+- Kubernetes: **16/16** (`acceptance-node-2026-09-30T22-28-10.log`); the
+  audit log shows each pod authenticating with its own login. The
+  connector and the cluster share the name `databricks` without trouble.
+- Pod kill: failover recovered in 24 s, as before
+  (`failover-ops-20260930T222932Z.log`).
+- Negative: an RCS presenting `databricks0-client`'s valid credentials but
+  claiming to be `databricks1` authenticated, then was refused — **403
+  Access Forbidden**. Per-server logins are enforced.
+- Mac RCS (`rcslocal-client`): **16/16**
+  (`acceptance-node-2026-09-30T22-36-13.log`); switching IDM back to the pods
+  needed no restart: **16/16** (`acceptance-node-2026-09-30T22-37-02.log`).
+- The first two runs on the aligned lab failed (15/16, then 14/16): a search
+  and a liveSync never reached either pod, and IDM recovered only at its
+  900 s group check. The Mac was on battery and entering sleep, which
+  suspends the minikube VM (its clock had fallen 67 minutes behind). With
+  sleep blocked (`caffeinate`), the runs above passed. Recorded as research
+  Unknowns #15.

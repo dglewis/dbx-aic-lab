@@ -228,12 +228,11 @@ cd runtime/openidm && ./startup.sh
 The RCS connects out to IDM, as it will to AIC.
 
 ```bash
-cp secrets/rcs.env.example secrets/rcs.env   # RCS_IDM_PRINCIPAL=connector-server-client,
-                                             # RCS_IDM_PASSWORD=<random alphanumeric>
+cp secrets/rcs.env.example secrets/rcs.env   # one RCS_IDM_PASSWORD_<SERVER> per server
 rcs/fetch-rcs.sh                   # official image -> rcs/openicf/ (gitignored)
 rcs/deploy.sh client               # properties, IDM cert -> RCS truststore, scripts, driver
-idm-config/deploy.sh rcs-client    # IDM side: client entry, RCS login + openicf access rule
-# First time only: restart IDM — boot.properties (rcs.idm.password) is read at startup.
+idm-config/deploy.sh rcs-client    # IDM side: client entry, rcslocal's login + access rule
+# After adding a server's password: restart IDM — boot.properties is read at startup.
 rcs/run.sh                         # foreground; logs in rcs/openicf/logs/
 cd test && PROFILE=rcs-client npm test
 # Back to in-process: idm-config/deploy.sh local
@@ -268,12 +267,14 @@ minikube start -p rcs --driver=vfkit --container-runtime=containerd \
 idm-config/lab-tls-cert.sh              # then restart IDM
 rcs/deploy.sh client                    # puts IDM's new cert in the RCS truststore
 rcs/k8s/build.sh                        # image built inside the node
-rcs/k8s/deploy.sh                       # Secret from secrets/rcs.env + StatefulSet (2 pods)
-idm-config/deploy.sh rcs-k8s            # IDM side: rcs0 + rcs1 in failover group rcsdatabricks
+rcs/k8s/deploy.sh                       # Secret (one login per server) + StatefulSet "databricks"
+idm-config/deploy.sh rcs-k8s            # IDM side: databricks0 + databricks1 in cluster "databricks"
 cd test && PROFILE=k8s npm test
 rcs/k8s/failover-test.sh ops|livesync   # kill the active pod; log in test/runs/
 # Known concern for freshly started pods: docs/rcs-kubernetes-research.md,
 # Unknowns #14 (the suite's readiness gate covers it).
+# Keep the Mac awake while testing: sleep suspends the minikube VM and IDM's
+# requests to the pods stall (Unknowns #15). Prefix runs with caffeinate -i.
 ```
 
 **Making changes on the Kubernetes path** — what to run depends on where
@@ -336,7 +337,7 @@ them for your tenant's current console.
      example shows `webSocketConnections=3`).
    - `connectorserver.connectorServerName` — not in the file; each pod
      derives it from its pod name (`<system>-0` → `<system>0`) and passes
-     it with `-D` (see `rcs/k8s/manifests/rcs.yaml`)
+     it with `-D` (see `rcs/k8s/manifests/databricks.yaml`)
 6. **Deliver each pod's credentials as a secret, never in the file** — Ping
    recommends passing `connectorserver.clientId` / `clientSecret` through
    `OPENICF_OPTS` rather than in `ConnectorServer.properties`. Here: one
@@ -344,7 +345,10 @@ them for your tenant's current console.
    server (`<system><n>.args`), and each pod references its own via
    `OPENICF_OPTS`.
 7. **Deploy and verify** — every server shows as connected under
-   *Connector Servers*; the connector's test action succeeds.
+   *Connector Servers*; the connector's test action succeeds. Run the
+   test again after every pod start or restart — a fresh pod fails data
+   operations until it runs
+   ([research Unknowns #14](docs/rcs-kubernetes-research.md#unknowns--each-needs-an-empirical-test)).
 
 Sources (Ping): [Sync identities](https://docs.pingidentity.com/pingoneaic/identities/sync-identities.html) ·
 [RCS configuration migration FAQ](https://docs.pingidentity.com/pingoneaic/product-information/migration-dependent-features/rcs-configuration-migration-faq.html) ·
