@@ -1,0 +1,24 @@
+{
+    "connectorsLocation" : "connectors",
+    "enabled" : true,
+    "remoteConnectorServers" : [
+        {
+            "type" : "remoteConnectorServer",
+            "name" : "rcslocal",
+            "displayName" : "Local Java RCS (server mode)",
+            "enabled" : true,
+            "host" : "127.0.0.1",
+            "port" : 8759,
+            "useSSL" : false,
+            "key" : "&{rcs.key}",
+            "webSocketConnections" : 2,
+            "pingPongInterval" : 60,
+            "housekeepingInterval" : 20,
+            "connectionGroupCheckInterval" : 60,
+            "proxyHost" : null,
+            "proxyPort" : 8080,
+            "proxyUser" : null,
+            "proxyPassword" : null
+        }
+    ]
+}

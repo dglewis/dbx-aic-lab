@@ -20,6 +20,7 @@ rcs/openicf/
 *.env
 secrets/*
 !secrets/databricks.env.example
+!secrets/rcs.env.example
 
 # OS noise
 .DS_Store
