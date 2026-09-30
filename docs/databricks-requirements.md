@@ -10,6 +10,10 @@ and [ADR-002](adr-002-databricks-authentication.md).
 - **Type:** a Delta table in Unity Catalog, managed or external. Views,
   federated (foreign) tables and non-Delta files have no change feed; views,
   materialized views and streaming tables are not writable.
+- **Not a materialized view or streaming table** (Lakeflow/DLT outputs),
+  even for read-only sync, unless tested first: a materialized view's change
+  feed is Beta and a full refresh reports every row as changed; a streaming
+  table has a change feed only when fed by an AUTO CDC flow.
 - **Change Data Feed on:** `delta.enableChangeDataFeed = true`, enabled
   before the first full load. Tell us the version at which it was enabled.
   Also `delta.enableRowTracking = true` (required by Databricks' newer
