@@ -130,13 +130,20 @@ Connector hardening (any topology; design.md → "Sync / change detection"):
 - [ ] `SyncScript`: resume at `token` and skip already-applied rows, so a
       poll failing mid-commit can't skip the rest of that commit
 
-Kubernetes — one pod in minikube, client mode (T3):
-- [ ] Install `vfkit`; delete the stale docker-driver minikube profile;
-      cluster per README runbook (verify against minikube docs first)
-- [ ] Dockerfile `FROM gcr.io/forgerock-io/rcs:1.5.20.36` + our files;
-      `minikube image build`; manifests written from scratch
-- [ ] Own `logback.xml` so connector/Groovy logs reach stdout
-- [ ] `PROFILE=k8s` → 16/16
+Kubernetes — one pod in minikube, client mode (T3) — working ✅ 2026-09-29:
+- [x] `vfkit` installed; stale docker-driver profile deleted; cluster `rcs`
+      (minikube 1.38, vfkit, containerd 2.2.1, Kubernetes 1.35.0)
+- [x] `rcs/k8s/Dockerfile`: `FROM gcr.io/forgerock-io/rcs:1.5.20.36`, COPY-only
+      (driver, scripts, our properties + logback, truststore); built in the
+      node by `rcs/k8s/build.sh`; StatefulSet written from scratch
+      (`rcs/k8s/manifests/rcs.yaml`), deployed by `rcs/k8s/deploy.sh`
+- [x] IDM credentials as a Secret holding a JDK @argfile (not env, not in
+      the process list); `idm-config/deploy.sh rcs-k8s` (script path in the pod)
+- [x] IDM lab certificate with SAN `localhost` + `host.minikube.internal`
+      (`idm-config/lab-tls-cert.sh`) — the shipped CN-only cert failed the
+      pod's TLS handshake
+- [x] Own `logback.xml`: connector/Groovy output in `kubectl logs`
+- [x] `PROFILE=k8s` → **16/16**
 
 Kubernetes — high availability (T3, 2 replicas):
 - [ ] StatefulSet, Secrets as files, probes, PodDisruptionBudget, IDM

@@ -251,20 +251,24 @@ cd test && PROFILE=rcs npm test
 # Back to in-process: idm-config/deploy.sh local
 ```
 
-### Kubernetes path (phase 2 — not yet run)
+### Kubernetes path (topology T3 — RCS pod, client mode)
 
-Planned setup for macOS. Check each command against the minikube docs for
-the installed version before running (hard rule: version-exact docs first);
-this block becomes as-run once gate the Kubernetes one-pod step in [plan.md](docs/plan.md) passes.
+As run on macOS (minikube 1.38; see the minikube docs for your version).
 
 ```bash
 brew install vfkit                      # Apple Virtualization.framework driver
 minikube delete                         # only if an old docker-driver profile exists
 minikube start -p rcs --driver=vfkit --container-runtime=containerd \
   --kubernetes-version=v1.35.0 --cpus=2 --memory=4g
-# Pods reach host services (IDM on 8443) via host.minikube.internal —
-# the host service must listen on all interfaces. On macOS 15+, the
-# terminal needs Local Network permission.
+# Pods reach IDM via host.minikube.internal; IDM must listen on all
+# interfaces (it does) and present a cert valid for that name:
+idm-config/lab-tls-cert.sh              # then restart IDM
+rcs/deploy.sh client                    # puts IDM's new cert in the RCS truststore
+rcs/k8s/build.sh                        # image built inside the node
+rcs/k8s/deploy.sh                       # Secret from secrets/rcs.env + StatefulSet
+idm-config/deploy.sh rcs-k8s            # IDM side (script path inside the pod)
+cd test && PROFILE=k8s npm test
+# Stop any RCS on the Mac first — the pod uses the same name (rcslocal).
 ```
 
 Secrets (service-principal OAuth credentials, optional PAT, warehouse HTTP path) live in untracked `*.env` /

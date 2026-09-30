@@ -35,7 +35,8 @@ Run each task on both paths at least once:
 
 | Date | Task | Path | Iteration time | Steps | Friction / notes |
 |---|---|---|---|---|---|
-| | | | | | |
+| 2026-09-29 | First deploy of the RCS pod (not a standard task — setup) | K8s | ~40 min wall clock incl. diagnosis | install vfkit, create cluster, write Dockerfile/manifests/scripts, build, deploy, 3 fix-redeploy loops | (1) Pod crash-looped: Secret mounted `0400` root-owned, container runs as uid 11111 → needed `fsGroup` + `0440`. (2) StatefulSet stayed on the crash-looping pod after the spec was fixed — had to delete the pod by hand (known StatefulSet behaviour). (3) TLS handshake failed silently: pod dials `host.minikube.internal`, IDM cert was CN=localhost with no SAN; the only symptom was "Remotely closed connection" in the pod and nothing in IDM's logs — diagnosed by elimination (no auth attempt in IDM's audit). None of these exist on the JVM path. |
+| 2026-09-29 | Change a Groovy script or the certificate | K8s | one image rebuild + pod restart (~1 min) | edit, `rcs/k8s/build.sh`, delete pod / `rcs/k8s/deploy.sh` | Same-tag rebuilds need a pod restart to take effect. On the JVM path: copy + RCS restart. |
 
 ## Summary
 

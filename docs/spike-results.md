@@ -291,3 +291,26 @@ The target mode: the RCS (1.5.20.36, host JDK 21) connects out to
 - After a deploy the first connector test can land before the provisioner
   finishes activating ("connector not available"); the suite's readiness
   gate absorbs it.
+
+## 2026-09-29 — RCS pod in minikube (T3): 16/16
+
+One RCS pod (official image `gcr.io/forgerock-io/rcs:1.5.20.36` + our driver,
+scripts, properties, logback, truststore), client mode to IDM on the Mac via
+`host.minikube.internal`. Cluster: minikube 1.38, vfkit driver, containerd
+2.2.1, Kubernetes 1.35.0.
+
+- **16/16** through the pod (`acceptance-node-2026-09-30T02-37-03.log`,
+  profile `k8s`); 22 script executions logged in the pod; M2M customizer ran
+  in the pod.
+- IDM credentials: Kubernetes Secret containing a JDK @argfile, referenced by
+  `OPENICF_OPTS` — no password in env, pod log, process list or run log
+  (all checked).
+- Failures on the way (details in k8s-dev-experience.md): Secret file
+  permissions vs non-root uid; StatefulSet not replacing a crash-looping
+  pod; TLS handshake failure because IDM's shipped cert is CN=localhost with
+  no SAN — fixed with a lab cert (`idm-config/lab-tls-cert.sh`, SAN
+  `localhost`, `host.minikube.internal`, `127.0.0.1`).
+- The image's default truststore validates Databricks; our `logback.xml`
+  puts connector/Groovy output in `kubectl logs`.
+- The first TLS attempt from the node to IDM timed out once, then worked; the
+  macOS firewall permits Java (IDM) but blocks other listeners by default.
