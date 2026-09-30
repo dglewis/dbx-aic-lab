@@ -269,9 +269,9 @@ Headers and legal files only — not legal advice. Consequences are in
 
 | # | Question | Gate |
 |---|---|---|
-| 1 | `useSSL` vs `usessl` in IDM connectorinfoprovider | G1 |
-| 2 | CustomizerScript/GuardedString path unchanged on RCS | G1 |
-| 3 | scriptedsql 1.5.20.36 + databricks-jdbc 2.7.3 on Java 21; `EnableArrow=0` still needed | G1 |
+| 1 | `useSSL` vs `usessl` in IDM connectorinfoprovider | G1 — **answered**: IDM 8.1.1 uses `useSSL` (from `createConnectorServerCoreConfig`); its defaults are housekeeping 600 s, group check 900 s, ping-pong 300 s, not the documented 20/60/60 |
+| 2 | CustomizerScript/GuardedString path unchanged on RCS | G1 — **answered**: arrives as `GuardedString`, populates `propertyBag.oauth2`, customizer unchanged. One unexplained first-init miss (see spike-results) |
+| 3 | scriptedsql 1.5.20.36 + databricks-jdbc 2.7.3 on Java 21; `EnableArrow=0` still needed | G1 — **works** (16/16, driver in `openicf/lib/`); run with `EnableArrow=0`, necessity not retested |
 | 4 | Script-edit reload behaviour on RCS | G1 |
 | 5 | Local IDM 8.1.1 accepts client-mode RCS (auth method) | G2 |
 | 6 | Default RCS truststore validates the Databricks endpoint | G3 |

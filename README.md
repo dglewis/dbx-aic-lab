@@ -76,7 +76,7 @@ redistribution for each vendor artifact: [NOTICE](NOTICE.md).
 
 | Dependency | Version | Notes |
 |---|---|---|
-| Java RCS | 1.5.20.36 (Backstage zip) | Extracted to `rcs/openicf/` (gitignored); JDK 21 |
+| Java RCS | 1.5.20.36 (from the official image via `rcs/fetch-rcs.sh`, or the Backstage zip) | Extracted to `rcs/openicf/` (gitignored); JDK 21 |
 
 **Kubernetes path (phase 2)**
 
@@ -123,7 +123,7 @@ The suite needs the live lab — it is a manual gate, not a CI job.
 | `idm-config/script/` | yes | ScriptedSQL Groovy scripts (one per ICF operation + customizer) |
 | `databricks/` | yes | Lab tooling: `smoke-test.sh` (JDBC connectivity), `apply-sql.sh` + `JdbcRunner.java` (run SQL over the driver), `sql/` (DDL, CDF setup, seed data) |
 | `test/` | yes | Node/Vitest acceptance suite (`cd test && npm install && npm test`) — IDM REST assertions + Databricks-native out-of-band checks over the SQL Statement Execution REST API; profile-driven (`PROFILE=lab\|tenant`, more per topology as phase 2 lands); writes `test/runs/acceptance-node-*.log` + JUnit XML. `test/unit/`: offline unit tests (`npm run test:unit`) |
-| `rcs/` | yes | Phase-2 RCS files we author (properties, deploy script, Dockerfile, manifests) |
+| `rcs/` | yes | RCS files we author: `fetch-rcs.sh`, `deploy.sh`, `run.sh`, `conf/ConnectorServer.properties` (Dockerfile and manifests to come) |
 | `rcs/openicf/` | no (gitignored) | Extracted Java RCS distribution (proprietary) |
 | `docs/` | yes | ADR, design, plan, spike results — the narrative record |
 | `test/runs/` | no (gitignored) | Local HTTP request/response logs, one per acceptance/soak run |
@@ -216,6 +216,19 @@ cd runtime/openidm && ./startup.sh
 # only — IDM logs "Failed to add connector" if the driver lands there):
 mvn dependency:copy -Dartifact=com.databricks:databricks-jdbc:2.7.3 \
   -DoutputDirectory=runtime/openidm/lib/
+```
+
+### Plain-JVM RCS path (topology T1)
+
+```bash
+cp secrets/rcs.env.example secrets/rcs.env   # set RCS_KEY (alphanumeric)
+rcs/fetch-rcs.sh                   # official image -> rcs/openicf/ (gitignored)
+rcs/deploy.sh                      # properties + key, scripts, driver
+rcs/run.sh                         # foreground; logs in rcs/openicf/logs/
+idm-config/deploy.sh rcs           # point IDM's provisioner at the RCS
+# First time only: restart IDM — boot.properties (rcs.key) is read at startup.
+cd test && PROFILE=rcs npm test
+# Back to in-process: idm-config/deploy.sh local
 ```
 
 ### Kubernetes path (phase 2 — not yet run)

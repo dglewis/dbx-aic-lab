@@ -66,7 +66,7 @@ on purpose; never retire the plain-JVM path in favour of Kubernetes.
 ```bash
 # Lab up? (DS on 31389, IDM on 8443 — see README runbook)
 curl -k -u openidm-admin:openidm-admin https://localhost:8443/openidm/info/ping
-idm-config/deploy.sh                  # push tracked config to runtime
+idm-config/deploy.sh [local|rcs]      # push tracked config to runtime (rcs: via local RCS)
 cd test && npm test                   # 16 checks; writes test/runs/ + JUnit XML
 npm run test:unit                     # offline unit tests (auth selection); run from test/
 ```

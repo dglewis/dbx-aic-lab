@@ -225,3 +225,35 @@ still present in the local env file was never used — it would have 403'd.
 `NoClassDefFoundError`; after an IDM restart, **16/16**. Run log checked:
 no client secret, token, token endpoint, host or warehouse ID. New offline
 unit tests: `npm run test:unit`, 12/12.
+
+## 2026-09-29 — RCS server mode (T1): 16/16, proven remote
+
+Java RCS 1.5.20.36, extracted from the official image, running on the host
+JDK 21 in server mode; IDM connects on 8759 (`idm-config/deploy.sh rcs`).
+
+- **16/16** through the RCS (`acceptance-node-2026-09-29T21-19-18.log`,
+  profile `rcs`).
+- **Proven remote**: with IDM's own scriptedsql and Databricks driver jars
+  moved out of the runtime, IDM listed only the RCS-hosted scriptedsql
+  1.5.20.36, and the suite passed again **16/16**
+  (`acceptance-node-2026-09-29T21-21-26.log`); the RCS connector log shows
+  the scripts executing there, and the customizer logged the M2M setup on
+  the RCS. Jars restored, `deploy.sh local` → T0 **16/16**
+  (`acceptance-node-2026-09-29T21-22-34.log`).
+- Credential path unchanged on the RCS: `customSensitiveConfiguration`
+  arrives as a `GuardedString` and populates `propertyBag.oauth2` (probe of
+  key names/types only).
+- IDM 8.1.1 names the SSL flag `useSSL` (docs say `usessl`), confirmed via
+  `createConnectorServerCoreConfig`; its interval defaults differ from the
+  docs.
+- Gotcha: IDM reads `boot.properties` only at startup, so a new
+  substitution property (`rcs.key`) needs an IDM restart — until then the
+  connectorinfoprovider fails with "Missing config properties".
+- Unexplained, not reproduced: the first connector init after an IDM
+  restart ran the customizer with an empty `oauth2` bag (warning logged,
+  test timed out); it cleared after an RCS restart and did not recur on a
+  second IDM restart with the RCS already running. Watch for it.
+- Logging: connector/Groovy output lands in `openicf/logs/Connector.log` and
+  is also forwarded into IDM's log; the M2M customizer line went to the RCS
+  console.
+- Run logs checked: no client secret, RCS key, host, warehouse ID or token.

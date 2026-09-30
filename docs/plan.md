@@ -94,17 +94,21 @@ G0 — baseline re-established (T0) ✅ 2026-09-29:
 - [x] IDM restarted (cleared the stale-classloader `NoClassDefFoundError`),
       `deploy.sh`, `npm test` **16/16** — no PAT used anywhere
 
-G1 — Java RCS on the host JVM, server mode (T1):
-- [ ] **DAN**: RCS 1.5.20.36 from Backstage (or extracted from the official
-      image) → `rcs/openicf/` (gitignored); JDK 21
-- [ ] `rcs/` tooling (tracked, our own files): properties, deploy script
-      placing driver → `openicf/lib/`, scripts → `openicf/scripts/databricks/`
-- [ ] Tracked `provisioner.openicf.connectorinfoprovider.json`;
+G1 — Java RCS on the host JVM, server mode (T1) — functional ✅ 2026-09-29:
+- [x] RCS 1.5.20.36 extracted from the official image → `rcs/openicf/`
+      (gitignored) by `rcs/fetch-rcs.sh`; JDK 21
+- [x] `rcs/` tooling (tracked, our own files): `conf/ConnectorServer.properties`,
+      `deploy.sh` (key via `/setKey`, driver → `openicf/lib/`, scripts →
+      `openicf/scripts/databricks/`), `run.sh`
+- [x] `idm-config/deploy.sh rcs`: `topology/rcs/provisioner.openicf.connectorinfoprovider.json`,
       provisioner `connectorHostRef` + RCS-side `scriptRoots`
-- [ ] Prove the connector runs on RCS (remove its jars from the IDM runtime;
-      customizer log line appears in RCS logs; SP in query history)
-- [ ] `PROFILE=rcs` → 16/16; negatives (wrong key, RCS kill/recovery,
-      script-edit reload); TLS on; token-boundary soak
+- [x] Proven remote: with IDM's scriptedsql + driver jars removed, IDM lists
+      only the RCS connector, connector test ok, 16/16; scripts and the M2M
+      customizer execute in the RCS
+- [x] `PROFILE=rcs` → **16/16**; switching back (`deploy.sh local`) → T0 16/16
+- [ ] Negatives: wrong key, RCS kill/recovery, script-edit reload
+- [ ] TLS on the IDM↔RCS link (the connector config, incl. the SP secret,
+      crosses it); token-boundary soak through the RCS
 
 G2 — Java RCS on the host JVM, client mode (T2):
 - [ ] IDM `remoteConnectorClients`; RCS dials `wss://localhost:8443/openicf`
