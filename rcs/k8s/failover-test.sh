@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Kill the active RCS pod and record what IDM sees. Two scenarios:
 #   ops       — steady connector reads once a second; kill the active pod;
-#               measure the error window until rcs1 serves.
+#               measure the error window until the other pod serves.
 #   livesync  — one large Databricks commit (ROWS rows, default 50000) plus a
 #               small follow-up commit; start liveSync, kill the active pod
 #               while it streams; record the liveSync outcome, the token IDM
@@ -36,8 +36,8 @@ stored_token() { curl -sk "${AUTH[@]}" "$IDM/$STAGE" | jq -r '.connectorData.syn
 servers() { curl -sk "${AUTH[@]}" -X POST "$IDM/system?_action=testConnectorServers" | jq -c '[.openicf[] | {(.name): .ok}] | add'; }
 connector_ok() { curl -sk "${AUTH[@]}" -m 10 -X POST "$IDM/system/databricks?_action=test" | jq -r '.ok' 2>/dev/null; }
 
-# Active pod = first healthy member of the failover group (rcs0, then rcs1).
-active_pod() { [[ "$(servers | jq -r '.rcs0')" == true ]] && echo rcs-0 || echo rcs-1; }
+# Active pod = first healthy member of the failover group (databricks0, then databricks1).
+active_pod() { [[ "$(servers | jq -r '.databricks0')" == true ]] && echo databricks-0 || echo databricks-1; }
 kill_pod() { kubectl -n "$NS" delete pod "$1" --grace-period=0 --force >/dev/null 2>&1; log "KILLED $1 (force, no grace)"; }
 
 wait_failover() {   # until the connector answers again, via whichever pod

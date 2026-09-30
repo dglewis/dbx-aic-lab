@@ -1,7 +1,10 @@
-# Two RCS pods in client mode, connecting out to IDM on the Mac. Each pod is a
-# named connector server (rcs0, rcs1); IDM puts both in one failover group.
-# Written for this repo. The Secret "rcs-idm-credentials" is created by
-# rcs/k8s/deploy.sh from secrets/rcs.env — never committed.
+# The Databricks RCS cluster (ADR-003: one RCS cluster per external system):
+# two pods in client mode, connecting out to IDM on the Mac. Each pod is a
+# named connector server (databricks0, databricks1) with its own login; IDM
+# puts both in the failover group "databricks".
+# Written for this repo. The Secret "databricks-rcs-credentials" (one JDK
+# @argfile per server) is created by rcs/k8s/deploy.sh from secrets/rcs.env —
+# never committed.
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -10,16 +13,16 @@ metadata:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: rcs
+  name: databricks
   namespace: dbx-aic-lab
 spec:
-  serviceName: rcs          # client mode: no inbound traffic, so no Service object
+  serviceName: databricks   # client mode: no inbound traffic, so no Service object
   replicas: 2
   selector:
-    matchLabels: { app: rcs }
+    matchLabels: { app: databricks-rcs }
   template:
     metadata:
-      labels: { app: rcs }
+      labels: { app: databricks-rcs }
     spec:
       terminationGracePeriodSeconds: 30
       securityContext:
@@ -29,20 +32,19 @@ spec:
         fsGroup: 11111          # Secret files get this group, so the pod can read them
       containers:
         - name: rcs
-          image: dbx-aic-lab-rcs:dev
+          image: databricks-rcs:dev
           imagePullPolicy: Never      # built inside the minikube node by build.sh
-          # Connector server name from the pod name: rcs-0 -> rcs0 (names must
-          # match ^[a-z0-9]*$). Then the image's own entrypoint, unchanged.
+          # Connector server name from the pod name: databricks-0 ->
+          # databricks0 (names must match ^[a-z0-9]*$). Its own login comes
+          # from a JDK @argfile (-Dconnectorserver.principal/password) named
+          # after it — out of the process list and env vars. Then the image's
+          # own entrypoint, unchanged.
           command: ["/bin/sh", "-c"]
           args:
-            - n=$$(hostname);
-              export OPENICF_OPTS="$OPENICF_OPTS -Dconnectorserver.connectorServerName=${n%%-*}${n##*-}";
+            - n=$$(hostname); s=${n%%-*}${n##*-};
+              export OPENICF_OPTS="@/var/run/rcs-credentials/$s.args -Dconnectorserver.connectorServerName=$s";
               exec /opt/openicf/bin/docker-entrypoint.sh
           env:
-            # JDK @argfile with -Dconnectorserver.principal/password: keeps the
-            # credentials out of the process list and out of env vars.
-            - name: OPENICF_OPTS
-              value: "@/var/run/rcs-credentials/credentials.args"
             # Port the RCS dials (connectorserver.url): 8443 in the lab, 443 for AIC.
             - name: RCS_UPSTREAM_PORT
               value: "8443"
@@ -82,16 +84,16 @@ spec:
       volumes:
         - name: idm-credentials
           secret:
-            secretName: rcs-idm-credentials
+            secretName: databricks-rcs-credentials
             defaultMode: 0440         # owner + fsGroup read only
 ---
 # Keep one RCS connected during voluntary disruptions (node drain, upgrades).
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: rcs
+  name: databricks
   namespace: dbx-aic-lab
 spec:
   minAvailable: 1
   selector:
-    matchLabels: { app: rcs }
+    matchLabels: { app: databricks-rcs }

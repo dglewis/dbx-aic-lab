@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 PROFILE="${MINIKUBE_PROFILE:-rcs}"
-TAG="${RCS_IMAGE:-dbx-aic-lab-rcs:dev}"
+TAG="${RCS_IMAGE:-databricks-rcs:dev}"
 
 TRUST=rcs/openicf/security/truststore
 keytool_bin="$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home/bin/keytool"

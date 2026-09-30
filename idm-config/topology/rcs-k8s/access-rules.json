@@ -1,16 +1,16 @@
 [
     {
-        "servlet" : "openicf",
-        "pattern" : "rcs0",
-        "roles" : "internal/role/rcs-databricks",
-        "methods" : "read",
-        "actions" : ""
+        "servlet": "openicf",
+        "pattern": "databricks0",
+        "roles": "internal/role/databricks0-client-authorized",
+        "methods": "read",
+        "actions": ""
     },
     {
-        "servlet" : "openicf",
-        "pattern" : "rcs1",
-        "roles" : "internal/role/rcs-databricks",
-        "methods" : "read",
-        "actions" : ""
+        "servlet": "openicf",
+        "pattern": "databricks1",
+        "roles": "internal/role/databricks1-client-authorized",
+        "methods": "read",
+        "actions": ""
     }
 ]

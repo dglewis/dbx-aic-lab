@@ -1,9 +1,9 @@
 [
     {
-        "servlet" : "openicf",
-        "pattern" : "rcslocal",
-        "roles" : "internal/role/rcs-databricks",
-        "methods" : "read",
-        "actions" : ""
+        "servlet": "openicf",
+        "pattern": "rcslocal",
+        "roles": "internal/role/rcslocal-client-authorized",
+        "methods": "read",
+        "actions": ""
     }
 ]

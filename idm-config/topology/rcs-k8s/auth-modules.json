@@ -1,0 +1,26 @@
+[
+    {
+        "name": "STATIC_USER",
+        "properties": {
+            "queryOnResource": "internal/user",
+            "username": "databricks0-client",
+            "password": "&{rcs.idm.password.databricks0}",
+            "defaultUserRoles": [
+                "internal/role/databricks0-client-authorized"
+            ]
+        },
+        "enabled": true
+    },
+    {
+        "name": "STATIC_USER",
+        "properties": {
+            "queryOnResource": "internal/user",
+            "username": "databricks1-client",
+            "password": "&{rcs.idm.password.databricks1}",
+            "defaultUserRoles": [
+                "internal/role/databricks1-client-authorized"
+            ]
+        },
+        "enabled": true
+    }
+]
