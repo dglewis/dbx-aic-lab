@@ -17,7 +17,9 @@ This repository contains **no Ping Identity software or source code**.
   files. Running it requires your own Ping license. Our
   `ConnectorServer.properties`, `logback.xml`, entrypoint and Kubernetes
   manifests are written from the public documentation, not adapted from the
-  image's files.
+  image's files. Ping has no published statement on redistributing an image
+  built on theirs, so this repo publishes none: keep images you build in a
+  private registry.
 - [ForgeOps](https://github.com/ForgeRock/forgeops) (CDDL-1.0, Ping Identity,
   "as-is" support) was read as a reference for RCS on Kubernetes. No ForgeOps
   files are copied into this repository.

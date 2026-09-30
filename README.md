@@ -296,8 +296,11 @@ them for your tenant's current console.
    - `connectorserver.scope=fr:idm:*`
    - Interval properties and `webSocketConnections`: leave at the
      documented defaults — Ping: *"Don't adjust these property values
-     without specific guidance from Ping."* (The RCS page's default is
-     `webSocketConnections=2`; the AIC page's example shows `3`.)
+     without specific guidance from Ping."* Documented defaults:
+     `pingPongInterval=60`, `housekeepingInterval=20`,
+     `groupCheckInterval=60`, `webSocketConnections=2`,
+     `connectionTtl=300`, `newConnectionsInterval=10` (the AIC page's
+     example shows `webSocketConnections=3`).
    - `connectorserver.connectorServerName` — not in the file; each pod
      derives it from its pod name (`<system>-0` → `<system>0`) and passes
      it with `-D` (see `rcs/k8s/manifests/rcs.yaml`)

@@ -114,9 +114,8 @@ a subset spread across an analytics model), in order of preference:
    for in-flight writes, and tie handling. Would need a second sync script.
 4. **Full recon only**, for small subsets.
 
-Writes (outbound) must target a Delta table — views, materialized views and
-streaming tables are not writable. Prefer a **landing table** (an ordinary
-Delta table, named for its role) that the data team merges into their model.
+Writes (outbound) go to a Delta landing table the data team merges from —
+what they must provide: [databricks-requirements.md → Tables](databricks-requirements.md#tables).
 
 Known `SyncScript` weaknesses (fixes tracked in plan.md):
 1. If the table is recreated, versions restart at 0; a stored token above
@@ -192,8 +191,9 @@ per workspace (e.g. the tenant's).
    (`databricks/soak-test.sh`).
    Note: after an IDM restart against a cold serverless
    warehouse, the first M2M connect (token exchange + warehouse wake) can
-   make early operations fail transiently until the pool establishes —
-   self-heals; consider warm-up/retry in production.
+   make early operations fail transiently (routes return 404) until the
+   pool establishes — self-heals; the acceptance suite's readiness gate
+   waits it out. Consider warm-up/retry in production.
 7. **No PAT in IDM:** `deploy.sh` removes `databricks.pat` from
    `boot.properties` if present. ✔ lab
 8. **Rotation thereafter:** rotate the OAuth secret at the source (new

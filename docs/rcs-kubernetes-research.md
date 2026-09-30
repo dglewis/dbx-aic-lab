@@ -30,17 +30,17 @@ hosting works) and has no production use for this project.
 
 ## Java RCS — facts that shape the RCS-on-Mac steps
 
-**Version / JDK.** Use **1.5.20.36** (latest; fixes a hung token refresh that
-blocked websocket upgrades, adds shared token cache, hostId-routed paged
-recon) [D release notes]. Java 17 or 21 for ≥1.5.20.32; JDK 25 is not listed
-— use 21 [D java-server]. IDM 8.x is compatible with RCS 1.5.x [D
+**Version / JDK.** Why 1.5.20.36: latest at the time; fixes a hung token
+refresh that blocked websocket upgrades, adds shared token cache,
+hostId-routed paged recon [D release notes]. Supported JDKs for ≥1.5.20.32:
+17 or 21; 25 is not listed [D java-server]. Pinned versions: README → What
+you need. IDM 8.x is compatible with RCS 1.5.x [D
 before-you-install]. Our provisioner range `[1.5.0.0,1.6.0.0)` covers it.
 
 **Getting it.** Zip from Backstage (account required) [D]. Also a public-pull
 official image `gcr.io/forgerock-io/rcs:1.5.20.36` [D rcs-docker, IMG].
 Either way use is under Ping's commercial license; no official statement on
-redistributing a derived image [IMG] — keep derived images in a private
-registry only, never in the repo (hard rule 4).
+redistributing a derived image [IMG] — consequence: NOTICE.md.
 
 **What ships.** The image (and presumably the zip) already contains
 `connectors/scriptedsql-connector-1.5.20.36.jar` with Groovy 3.0.25 [IMG]
@@ -73,7 +73,8 @@ configure-server].
 - server mode → `remoteConnectorServers: [{name, host, port, useSSL, key, …}]`
   (IDM 8.1.1 reads `useSSL`, not the docs' `usessl` [L] — Unknowns #1);
 - client mode → `remoteConnectorClients` (RCS dials `wss://<idm>:8443/openicf`) [D];
-- HA → a group with `algorithm: failover|roundrobin` [D]; IDM 8.1.1 reads
+- HA → a group with `algorithm: failover|roundrobin` [D] (server mode:
+  `remoteConnectorServersGroup`); IDM 8.1.1 reads
   client-mode groups from the top-level `remoteConnectorClientsGroups`
   (Unknowns #10).
 The provisioner gains `connectorRef.connectorHostRef: "<name>"`; `&{}` is
@@ -163,8 +164,8 @@ probes, and jars via ConfigMap (1 MiB cap — the Databricks driver won't fit).
   (each holds its own JDBC pool).
 
 **Networking.** Client mode: egress only — 443 to the tenant (`/openicf/N`
-websockets + AM token endpoint) and DNS; no Service. The keepalive
-defaults are under every major provider's egress idle timeout (values:
+websockets + AM token endpoint) and DNS; no Service. The websocket ping
+(every 60 s by default) is under every major provider's egress idle timeout (values:
 design.md → Cloud-provider neutrality) [D MS, D AWS, D GCP]. Never set
 `pingPongInterval=0` in a cloud.
 Multi-region HA changes tenant IPs — allow egress by FQDN, not IP. The
@@ -220,7 +221,7 @@ State [L]: `kubectl` 1.35, `minikube` 1.38, `helm` 4.1 installed; **no
 Docker**, no vfkit/podman/colima; a stale minikube profile (docker driver)
 that errors — delete it first.
 
-Recommendation: **minikube + vfkit driver + containerd, K8s v1.35.0**.
+Recommendation: **minikube + vfkit driver + containerd** (versions: README).
 - No Docker needed (Apple Virtualization.framework); Apache-2.0, so no
   Docker Desktop licence question (Docker Desktop is paid for companies
   ≥250 staff or ≥$10M revenue; OrbStack is paid for commercial use).
@@ -259,7 +260,7 @@ Headers and legal files only — not legal advice. Consequences are in
 
 | # | Question | Gate |
 |---|---|---|
-| 1 | `useSSL` vs `usessl` in IDM connectorinfoprovider | server-mode step — **answered**: IDM 8.1.1 uses `useSSL` (from `createConnectorServerCoreConfig`); its defaults are housekeeping 600 s, group check 900 s, ping-pong 300 s, not the documented 20/60/60 |
+| 1 | `useSSL` vs `usessl` in IDM connectorinfoprovider | server-mode step — **answered**: IDM 8.1.1 uses `useSSL` (from `createConnectorServerCoreConfig`); its IDM-side defaults are housekeeping 600 s, group check 900 s, ping-pong 300 s, not the documented RCS defaults (housekeeping 20, group check 60, ping-pong 60) |
 | 2 | CustomizerScript/GuardedString path unchanged on RCS | server-mode step — **answered**: arrives as `GuardedString`, populates `propertyBag.oauth2`, customizer unchanged. One unexplained first-init miss (see spike-results) |
 | 3 | scriptedsql 1.5.20.36 + databricks-jdbc 2.7.3 on Java 21; `EnableArrow=0` still needed | server-mode step — **works** (16/16, driver in `openicf/lib/`); run with `EnableArrow=0`, necessity not retested |
 | 4 | Script-edit reload behaviour on RCS | Server mode (stepping stone) |

@@ -67,7 +67,7 @@ elsewhere as current guidance.
   `docs/design.md` → Credential path.
 - Known gotchas: `EnableArrow=0` and quoting values with `;` —
   `secrets/databricks.env.example`; cold-start and fresh-pod failures —
-  `docs/design.md` step 6 and research Unknowns #14.
+  `docs/design.md` → Setting up OAuth M2M, step 6; research Unknowns #14.
 
 ## Verify your changes
 
