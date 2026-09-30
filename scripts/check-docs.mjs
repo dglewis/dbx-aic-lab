@@ -3,7 +3,7 @@
 //   node scripts/check-docs.mjs
 // Also runs as the git pre-commit hook (.githooks/pre-commit).
 //
-// 1. Links: every relative Markdown link in tracked *.md files points to an
+// 1. Links: every relative Markdown link in the repo's *.md files points to an
 //    existing file, and every #anchor to an existing heading.
 // 2. Owned facts: each entry in scripts/doc-owners.json is a pattern for a
 //    fact that must be stated only in its owner file (AGENTS.md → "Where
@@ -17,7 +17,8 @@ import { fileURLToPath } from 'node:url'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DATED_RECORDS = [/^docs\/spike-results\.md$/, /^docs\/adr-[^/]+\.md$/]
 
-const mdFiles = execFileSync('git', ['ls-files', '*.md'], { cwd: root, encoding: 'utf8' })
+// Tracked files plus new ones not yet added (but not gitignored ones).
+const mdFiles = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '*.md'], { cwd: root, encoding: 'utf8' })
   .split('\n').filter(Boolean)
 const text = Object.fromEntries(mdFiles.map((f) => [f, readFileSync(join(root, f), 'utf8')]))
 
