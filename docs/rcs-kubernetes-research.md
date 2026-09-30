@@ -276,6 +276,7 @@ Headers and legal files only — not legal advice. Consequences are in
 | 14 | A freshly started RCS fails every data operation (JDBC URL without the M2M settings) until IDM's connector **test** action runs on it once; test runs the customizer. By design or a framework defect? Affects every pod restart, not only failover | Known concern — revisit before tenant step (options: scheduled test call as a warm-up; ask Ping) |
 | 15 | liveSync interrupted by a pod kill never returned an error; liveSync calls made while it was pending hung, IDM logging "Failed to find request response target". Test was not clean (overlapping calls, 5-min checks) — rerun properly before drawing conclusions | Known concern — revisit with a clean test |
 | 16 | Does `SELECT` alone allow `DESCRIBE HISTORY` (the connector's latest-version query)? Databricks documents `SELECT` for `table_changes()` but no privileges for `DESCRIBE HISTORY`; the lab SP also has `MODIFY`, so it was never tested read-only | Before tenant step — test: scratch table with CDF, SP granted only `SELECT` ([table_changes](https://docs.databricks.com/aws/en/sql/language-manual/functions/table_changes), [DESCRIBE HISTORY](https://docs.databricks.com/aws/en/sql/language-manual/delta-describe-history)) |
+| 17 | Where a system's cluster members run: spread across network zones (cross-zone failover) or kept in one location (segregation)? Compatible with ADR-003 either way; depends on where the external system and AIC egress sit | Tenant step — decide per system with the client's network layout |
 
 ## Sources
 

@@ -53,10 +53,17 @@ no function.
 
 - **One RCS cluster for all systems** — fewest instances, but every coupling
   above.
-- **Group systems that share a network zone and release cycle** (e.g.
-  several LDAP directories in one data center) — fewer instances, but still
-  couples their jars, upgrades and runtime; rejected in favour of one rule
-  with no exceptions to judge.
+- **Several systems sharing one RCS because they sit in the same network
+  zone** (e.g. Oracle and AD in one data center) — fewer instances, but
+  still couples their jars, upgrades and runtime.
+
+Not an alternative to this decision, and not decided here: **where each
+system's cluster members run.** Placing a system's own members across
+network zones (e.g. `databricks0` in zone A, `databricks1` in zone B, so one
+zone fails over to the other), or keeping a cluster in one network location
+for segregation, shares nothing between systems and is compatible with this
+decision. It remains an open deployment choice
+([research Unknowns #17](rcs-kubernetes-research.md#unknowns--each-needs-an-empirical-test)).
 
 ## Consequences
 
