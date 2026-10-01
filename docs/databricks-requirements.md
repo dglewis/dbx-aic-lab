@@ -30,6 +30,25 @@ and [ADR-002](adr-002-databricks-authentication.md).
 
 Verify: `SHOW TBLPROPERTIES <catalog>.<schema>.<table>`.
 
+## Table shape
+
+Give the connector **one row per object** holding its current state,
+updated in place. If you also keep history, keep it in a separate table
+the connector doesn't read. In slowly changing dimension (SCD) terms,
+from best fit to worst:
+
+| Rank | SCD type | Shape | Fit for the connector |
+|---|---|---|---|
+| 1 | Type 1 | One row per object; changed rows updated in place | Best: one change-feed event per change, deletes detected, and a full reconciliation reads one row per object |
+| 1 | Type 4 | A Type 1 current-state table, plus a separate history table | Best: the connector reads only the current-state table |
+| 3 | Type 3 | One row per object, plus "previous value" columns | Good: behaves like Type 1 |
+| 4 | Type 2 | One row per version; the object's key repeats | Poor: the connector must reduce it to the latest row per key, and a full reconciliation scans all history, so it slows as history grows |
+| 5 | Type 6 | Type 2, plus current-value columns on every version | Worst: as Type 2, and each change rewrites every version of the object |
+
+Whatever the type, load it with row-level writes
+([Keeping the sync position valid](#keeping-the-sync-position-valid)):
+a full overwrite reports every row as changed on every run.
+
 ## Keeping the sync position valid
 
 The connector's sync token is the table's Delta commit version.
