@@ -161,6 +161,29 @@ Known concerns — recorded, not blocking; revisit before the tenant step
       group check — seen with a pod kill and, without one, while the Mac
       slept; recheck with the Mac kept awake
 
+## History table (SCD Type 2) — proof
+
+Test what the sync engine does with a history table, where the object's
+key repeats across versions, against the expected ranking in
+[databricks-requirements.md → Table shape](databricks-requirements.md#table-shape).
+Any topology; existing object classes unchanged.
+
+- [ ] `databricks/sql/002_history_table.sql`: `access_grant_history` (BIGINT
+      key repeating per version, STRING reference, `valid_from`, `valid_to`
+      with a sentinel for open versions, `is_active`; all NOT NULL; CDF on),
+      plus a Type 1 current-state table of the same objects for comparison
+- [ ] Dummy data, one commit per scenario: open an object; close a version
+      and open the next in one commit; end an object with no successor; a
+      backdated version; a future-dated version; two active rows for one key
+- [ ] Probe: uncollapsed rows (duplicate source IDs) through recon and
+      liveSync — record what IDM does
+- [ ] Object class `accessGrant` (uid = the BIGINT, latest version per key):
+      Schema, Search and Sync scripts
+- [ ] Run each scenario through liveSync and recon; time recon against the
+      history table vs the current-state table as history grows
+- [ ] Record results in spike-results.md; correct Table shape if they
+      contradict it
+
 ## Phase 3 — real AIC tenant
 
 - [ ] **DAN**: tenant access (dev env); one RCS OAuth client per connector server
