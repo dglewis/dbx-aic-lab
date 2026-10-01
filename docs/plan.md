@@ -1,6 +1,6 @@
 # Build plan
 
-`[x]` done · `[ ]` open · **DAN** = needs Dan (account/credential actions)
+`[x]` done · `[ ]` open
 
 ## Phase 0 — lab infrastructure ✅
 
@@ -12,13 +12,13 @@
 - [x] ADR-001 (connector selection criteria, cited)
 
 Databricks tenant connectivity (infrastructure, not spike work):
-- [x] **DAN**: Free Edition workspace signed up; `secrets/databricks.env`
+- [x] Free Edition workspace signed up; `secrets/databricks.env`
       created (host, HTTP path, OAuth URL, JDBC URL, workspace ID)
-- [x] **DAN**: generate PAT → `DATABRICKS_PAT` in `secrets/databricks.env`
+- [x] Generate PAT → `DATABRICKS_PAT` in `secrets/databricks.env`
       (BI Tools scope preset, 30d). First stored token was already
       expired/revoked (403); fresh mint 2026-09-09 → auth green
 - [x] Connectivity smoke test from the lab: `databricks/smoke-test.sh` →
-      SMOKE-OK (catalog `workspace`, authed as Dan). Two env findings in
+      SMOKE-OK (catalog `workspace`, authed as the workspace user). Two env findings in
       spike-results.md: quote the JDBC URL in the sourced env file
       (unquoted `;` truncates it — the real cause of driver error 500177),
       and `EnableArrow=0` on the URL (Arrow fetch breaks on Java 21 without
@@ -186,7 +186,7 @@ Any topology; existing object classes unchanged.
 
 ## Phase 3 — real AIC tenant
 
-- [ ] **DAN**: tenant access (dev env); one RCS OAuth client per connector server
+- [ ] Tenant access (dev env); one RCS OAuth client per connector server
 - [x] OAuth M2M in the lab (design.md → "Setting up OAuth M2M", 2026-09-09):
       connector runs as SP `idm-connector-lab` via CustomizerScript +
       encrypted `customSensitiveConfiguration`; IDM holds no PAT
