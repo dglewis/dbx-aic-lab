@@ -204,12 +204,3 @@ Any topology; existing object classes unchanged.
       `PROFILE=tenant` → 16/16
 - [ ] Websocket idle survival through the provider's egress (soak)
 - [ ] Ask Ping: redistribution terms for a derived RCS image
-
-## Repository
-
-- [ ] Make the repo public — only after the Kubernetes high-availability
-      objectives in Phase 2 are met (decided 2026-09-30)
-- [ ] **DAN**: revoke the unused Databricks PAT and remove it from
-      `secrets/databricks.env` — nothing uses it (the SP is configured);
-      it never appeared in git history or run logs (checked 2026-09-30),
-      so revoking is housekeeping, not an incident
