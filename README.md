@@ -290,8 +290,43 @@ the changed thing lives (why: [design.md → Topology](docs/design.md#topology),
 | A new attribute (schema + script) | both | both rows above, together |
 
 For script-heavy work, iterate on the plain-JVM RCS and bake the result
-into the image. In production the image gets a new tag per change, is
-pushed to a registry, and rolls one pod at a time.
+into the image. Production: [Enterprise RCS image](#enterprise-rcs-image).
+
+### Enterprise RCS image
+
+Pattern: Ping's [custom RCS image](https://docs.pingidentity.com/openicf/connector-reference/rcs-docker.html) —
+vendor base image plus one layer of your files. Why:
+[design.md → Topology](docs/design.md#topology) ("Immutable image",
+"Secrets"). Licensing: [NOTICE](NOTICE.md).
+
+| Layer | Contents | Source |
+|---|---|---|
+| Base (Ping) | RCS, ScriptedSQL connector, Java 21 | `gcr.io/forgerock-io/rcs:<tag>` |
+| Yours | Databricks JDBC driver → `/opt/openicf/lib/` | Maven Central; version: [What you need](#what-you-need) |
+| Yours | Groovy scripts → `/opt/openicf/scripts/<system>/` | `idm-config/script/` |
+| Yours | `ConnectorServer.properties`, `logback.xml` → `/opt/openicf/conf/` | `rcs/k8s/` |
+
+Templates: `rcs/k8s/Dockerfile` (truststore line is lab-only),
+`rcs/k8s/manifests/databricks.yaml`.
+
+| Step | Do | Reference |
+|---|---|---|
+| 1. Base image | Mirror into your private registry; pin the tag, deploy by digest | [ACR artifact cache](https://learn.microsoft.com/en-us/azure/container-registry/artifact-cache-overview) · [ECR pull-through cache](https://docs.aws.amazon.com/AmazonECR/latest/userguide/pull-through-cache.html) · [Artifact Registry remote repositories](https://cloud.google.com/artifact-registry/docs/repositories/remote-overview) |
+| 2. Driver | Fetch the pinned version through your artifact proxy (Artifactory, Nexus); verify its `.sha1` | [Maven Central: databricks-jdbc](https://repo1.maven.org/maven2/com/databricks/databricks-jdbc/) |
+| 3. Build | `docker build` from the Dockerfile, for your nodes' architecture (usually amd64) | [Ping: custom RCS image](https://docs.pingidentity.com/openicf/connector-reference/rcs-docker.html) |
+| 4. Verify | Scan for vulnerabilities; sign | [Trivy](https://trivy.dev/) · [cosign](https://docs.sigstore.dev/cosign/signing/signing_with_containers/) |
+| 5. Publish | New version tag per change, pushed to the private registry; never `latest` | [Kubernetes: images](https://kubernetes.io/docs/concepts/containers/images/) |
+| 6. Deploy | Nodes pull from the private registry only; credentials from the secret store ([design.md → Cloud-provider neutrality](docs/design.md#cloud-provider-neutrality)); roll one pod at a time | [Pull from a private registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/) · [StatefulSet rolling updates](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#rolling-updates) |
+| 7. Connect to AIC | [AIC: one RCS cluster per system](#aic-one-rcs-cluster-per-system) | |
+
+Don't:
+- load the driver or scripts into a running pod (volume, init container) —
+  the running image is then not the one you scanned
+- put credentials in the image — [AIC step 6](#aic-one-rcs-cluster-per-system)
+- publish the built image ([NOTICE](NOTICE.md))
+
+Lab vs this: the lab builds inside minikube and skips steps 1, 2's
+checksum, and 4.
 
 ### AIC: one RCS cluster per system
 
