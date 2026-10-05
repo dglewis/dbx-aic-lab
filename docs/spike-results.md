@@ -393,3 +393,19 @@ Mac RCS got its own (`rcslocal-client`).
   suspends the minikube VM (its clock had fallen 67 minutes behind). With
   sleep blocked (`caffeinate`), the runs above passed. Recorded as research
   Unknowns #15.
+
+## 2026-10-05 — JDBC driver 3.4.3 on every path: 16/16
+
+The lab now uses `databricks-jdbc` 3.4.3, Databricks' current driver line,
+in place of 2.7.3. Same driver class, URL format and OAuth M2M properties,
+so the customizer and JdbcRunner are unchanged.
+
+- Driver smoke test on Java 21: SMOKE-OK.
+- In-process (T0): **16/16** (`acceptance-node-2026-10-05T18-18-25.log`).
+- Mac RCS, client mode (T2): **16/16**
+  (`acceptance-node-2026-10-05T18-20-23.log`).
+- Kubernetes, two pods (T3): **16/16**
+  (`acceptance-node-2026-10-05T18-22-14.log`); the RCS image's Java is
+  Zulu 21.0.11.
+- No JVM flags needed. 3.4.3 always uses Arrow and ignores `EnableArrow`
+  (logged as deprecated), so that URL property is gone from the template.

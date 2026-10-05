@@ -262,7 +262,7 @@ Headers and legal files only — not legal advice. Consequences are in
 |---|---|---|
 | 1 | `useSSL` vs `usessl` in IDM connectorinfoprovider | server-mode step — **answered**: IDM 8.1.1 uses `useSSL` (from `createConnectorServerCoreConfig`); its IDM-side defaults are housekeeping 600 s, group check 900 s, ping-pong 300 s, not the documented RCS defaults (housekeeping 20, group check 60, ping-pong 60) |
 | 2 | CustomizerScript/GuardedString path unchanged on RCS | server-mode step — **answered**: arrives as `GuardedString`, populates `propertyBag.oauth2`, customizer unchanged. One unexplained first-init miss (see spike-results) |
-| 3 | scriptedsql 1.5.20.36 + databricks-jdbc 2.7.3 on Java 21; `EnableArrow=0` still needed | server-mode step — **works** (16/16, driver in `openicf/lib/`); run with `EnableArrow=0`, necessity not retested |
+| 3 | scriptedsql 1.5.20.36 + databricks-jdbc 3.4.3 on Java 21 | **works** — 16/16 on every path, no JVM flags (spike-results 2026-10-05) |
 | 4 | Script-edit reload behaviour on RCS | Server mode (stepping stone) |
 | 5 | Local IDM 8.1.1 accepts client-mode RCS (auth method) | Client mode, Mac — **answered**: basic credentials via a STATIC_USER login (`connector-server-client`) plus an `openicf` access rule; without a rule IDM allows any authenticated user and warns |
 | 6 | Default RCS truststore validates the Databricks endpoint | Kubernetes, one pod — **answered**: yes (plus the lab IDM cert added) |
