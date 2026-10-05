@@ -8,7 +8,7 @@
 - [x] IDM 8.1.1 extracted; DS 8.1.1 set up (`idm-repo` profile, domain
       `forgerock.com` → `dc=openidm,dc=forgerock,dc=com`) and running on 31389
 - [x] Split JDKs: brew `openjdk@21` (IDM) / `openjdk@25` (DS)
-- [x] IDM `ACTIVE_READY` on 8443; Databricks JDBC 2.7.3 in `openidm/lib/`, clean load
+- [x] IDM `ACTIVE_READY` on 8443; Databricks JDBC driver in `openidm/lib/`, clean load
 - [x] ADR-001 (connector selection criteria, cited)
 
 Databricks tenant connectivity (infrastructure, not spike work):
@@ -18,11 +18,9 @@ Databricks tenant connectivity (infrastructure, not spike work):
       (BI Tools scope preset, 30d). First stored token was already
       expired/revoked (403); fresh mint 2026-09-09 → auth green
 - [x] Connectivity smoke test from the lab: `databricks/smoke-test.sh` →
-      SMOKE-OK (catalog `workspace`, authed as the workspace user). Two env findings in
+      SMOKE-OK (catalog `workspace`, authed as the workspace user). Env finding in
       spike-results.md: quote the JDBC URL in the sourced env file
-      (unquoted `;` truncates it — the real cause of driver error 500177),
-      and `EnableArrow=0` on the URL (Arrow fetch breaks on Java 21 without
-      `--add-opens`)
+      (unquoted `;` truncates it)
 
 ## Phase 1 — ScriptedSQL spike vs Databricks Free Edition
 

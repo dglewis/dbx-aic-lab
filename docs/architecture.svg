@@ -30,7 +30,7 @@
     <text x="46" y="101">idm_lab.business_records</text>
     <text x="46" y="143">idm_lab.outbound_records</text>
     <text x="46" y="183" font-size="11.5">Change Data Feed (commit log)</text>
-    <text x="331" y="94" fill="#2f9e8f" font-size="11.5" text-anchor="middle">JDBC 2.7.3</text>
+    <text x="331" y="94" fill="#2f9e8f" font-size="11.5" text-anchor="middle">JDBC 3.4.3</text>
     <text x="331" y="132" fill="#d0803c" font-size="11.5" text-anchor="middle">OAuth M2M (SP)</text>
     <text x="408" y="66" fill="#d0803c" font-weight="bold" font-size="13" font-family="Helvetica, Arial, sans-serif">PingIDM 8.1.1 (stands in for AIC)</text>
     <text x="420" y="100" font-weight="bold" font-family="Helvetica, Arial, sans-serif">ScriptedSQL connector</text>

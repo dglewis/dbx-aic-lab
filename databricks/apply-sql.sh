@@ -14,5 +14,5 @@ for a in "$@"; do
   if [[ -f "$a" ]]; then args+=("@$a"); else args+=("$a"); fi
 done
 
-exec "$JAVA" -cp runtime/openidm/lib/databricks-jdbc-2.7.3.jar \
+exec "$JAVA" -cp runtime/openidm/lib/databricks-jdbc-3.4.3.jar \
   databricks/JdbcRunner.java "${args[@]}"

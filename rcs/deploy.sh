@@ -20,7 +20,7 @@ case "$MODE" in client|server) ;; *) echo "usage: $0 [client|server]"; exit 2 ;;
 [[ -d rcs/openicf/connectors ]] || { echo "no rcs/openicf — run rcs/fetch-rcs.sh first"; exit 1; }
 set -a; source secrets/rcs.env; set +a
 
-DRIVER=runtime/openidm/lib/databricks-jdbc-2.7.3.jar
+DRIVER=runtime/openidm/lib/databricks-jdbc-3.4.3.jar
 [[ -f "$DRIVER" ]] || { echo "no $DRIVER — fetch it per the README runbook"; exit 1; }
 
 export JAVA_HOME="${JAVA_HOME:-$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home}"
@@ -46,6 +46,7 @@ fi
 
 mkdir -p rcs/openicf/scripts/databricks
 cp idm-config/script/*.groovy rcs/openicf/scripts/databricks/
+rm -f rcs/openicf/lib/databricks-jdbc-*.jar   # never two drivers on the classpath
 cp "$DRIVER" rcs/openicf/lib/
 
 echo "deployed ($MODE): properties, $(ls idm-config/script/*.groovy | wc -l | tr -d ' ') script(s), $(basename "$DRIVER")"

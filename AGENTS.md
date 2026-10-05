@@ -70,7 +70,7 @@ facts in `scripts/doc-owners.json`), run by the git pre-commit hook in
   which breaks identifiers. `table_changes()` args cannot be parameters.
 - Connector auth (customizer, and why it is a plain script body):
   `docs/design.md` → Credential path.
-- Known gotchas: `EnableArrow=0` and quoting values with `;` —
+- Known gotchas: quoting values with `;` —
   `secrets/databricks.env.example`; cold-start and fresh-pod failures —
   `docs/design.md` → Setting up OAuth M2M, step 6; research Unknowns #14.
 

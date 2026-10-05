@@ -45,7 +45,7 @@ redistributing a derived image [IMG] — consequence: NOTICE.md.
 **What ships.** The image (and presumably the zip) already contains
 `connectors/scriptedsql-connector-1.5.20.36.jar` with Groovy 3.0.25 [IMG]
 (IDM local copy: 1.5.20.33 / Groovy 3.0.22 [L]). We add only
-`databricks-jdbc-2.7.3.jar` → `openicf/lib/` ("Third-party libraries for
+`databricks-jdbc-3.4.3.jar` → `openicf/lib/` ("Third-party libraries for
 remote connectors belong in `openicf/lib/`" [D remote-connector]) and the
 Groovy scripts.
 

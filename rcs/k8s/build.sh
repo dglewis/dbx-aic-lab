@@ -14,7 +14,7 @@ keytool_bin="$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home/bin/k
 
 ctx=$(mktemp -d); trap 'rm -rf "$ctx"' EXIT
 cp rcs/k8s/Dockerfile rcs/k8s/ConnectorServer.properties rcs/k8s/logback.xml "$ctx/"
-cp runtime/openidm/lib/databricks-jdbc-2.7.3.jar "$TRUST" "$ctx/"
+cp runtime/openidm/lib/databricks-jdbc-3.4.3.jar "$TRUST" "$ctx/"
 mkdir "$ctx/scripts" && cp idm-config/script/*.groovy "$ctx/scripts/"
 
 minikube -p "$PROFILE" image build -t "$TAG" "$ctx"

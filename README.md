@@ -64,7 +64,7 @@ redistribution for each vendor artifact: [NOTICE](NOTICE.md).
 | PingIDM | 8.1.1 (`IDM-8.1.1.zip`, repo root) | Sync engine standing in for AIC; ships the ScriptedSQL connector |
 | PingDS | 8.1.1 (`DS-8.1.1.zip`, repo root) | IDM's required repository |
 | Databricks workspace | Free Edition works | SQL warehouse, Unity Catalog, a service principal with an OAuth secret (OAuth M2M; a PAT is optional — [ADR-002](docs/adr-002-databricks-authentication.md)) |
-| Databricks JDBC driver | `databricks-jdbc` 2.7.3 (Maven Central, Apache-2.0) | Fetched, never committed |
+| Databricks JDBC driver | `databricks-jdbc` [3.4.3](https://central.sonatype.com/artifact/com.databricks/databricks-jdbc/3.4.3) (Maven Central) | Fetched, never committed; [driver docs](https://docs.databricks.com/aws/en/integrations/jdbc-oss/) |
 | JDK 21 / JDK 25 | Homebrew `openjdk@21`, `openjdk@25` | Which needs which: Prerequisites below |
 | Node.js | 18+ | Acceptance suite (Vitest) |
 | Maven | any | One-time driver fetch |
@@ -79,7 +79,7 @@ redistribution for each vendor artifact: [NOTICE](NOTICE.md).
 
 | Dependency | Version | Notes |
 |---|---|---|
-| RCS image | `gcr.io/forgerock-io/rcs:1.5.20.36` (amd64 + arm64) | Licensing: [NOTICE](NOTICE.md) |
+| RCS image | `gcr.io/forgerock-io/rcs:1.5.20.36` (amd64 + arm64) | Ships Java 21 (Zulu); `rcs/k8s/build.sh` adds the JDBC driver. Licensing: [NOTICE](NOTICE.md) |
 | minikube | 1.38+ | Local cluster; `vfkit` driver on macOS (no Docker needed) |
 | vfkit | Homebrew | macOS hypervisor driver for minikube |
 | Kubernetes | 1.35 | Pin a minor your target provider supports |
@@ -201,10 +201,11 @@ cd runtime/openidm && ./startup.sh
 # verify: DS side  -> grep 31389 runtime/opendj/logs/ldap-access.audit.json | tail -1
 #         IDM side -> curl -k -u openidm-admin:openidm-admin https://localhost:8443/openidm/info/ping
 
-# Databricks JDBC driver (OSS, Apache 2.0) — goes in openidm/lib/ (third-party
+# Databricks JDBC driver — goes in openidm/lib/ (third-party
 # JDBC drivers, per the ScriptedSQL sample docs), NOT connectors/ (ICF bundles
 # only — IDM logs "Failed to add connector" if the driver lands there):
-mvn dependency:copy -Dartifact=com.databricks:databricks-jdbc:2.7.3 \
+# Both RCS paths copy it from there (rcs/deploy.sh, rcs/k8s/build.sh).
+mvn dependency:copy -Dartifact=com.databricks:databricks-jdbc:3.4.3 \
   -DoutputDirectory=runtime/openidm/lib/
 ```
 

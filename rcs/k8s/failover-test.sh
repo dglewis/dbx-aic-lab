@@ -28,7 +28,7 @@ log() { printf '%7.1fs  %s\n' "$(python3 -c "print($(now)-$T0)")" "$*" | tee -a 
 
 set -a; source secrets/databricks.env; set +a
 JAVA="$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home/bin/java"
-dbx() { "$JAVA" -cp runtime/openidm/lib/databricks-jdbc-2.7.3.jar databricks/JdbcRunner.java "$1" 2>&1 \
+dbx() { "$JAVA" -cp runtime/openidm/lib/databricks-jdbc-3.4.3.jar databricks/JdbcRunner.java "$1" 2>&1 \
           | grep -E 'ok \(|ERROR|Exception' | head -2; }
 idm() { curl -sk "${AUTH[@]}" -m "${2:-120}" "$@" 2>/dev/null; }
 livesync() { curl -sk "${AUTH[@]}" -m 300 -X POST "$IDM/system/databricks/businessRecord?_action=liveSync" -w '\nHTTP %{http_code}'; }

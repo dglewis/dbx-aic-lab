@@ -14,7 +14,7 @@ import java.util.List;
  * connector involved, so failures isolate to network/auth/driver.
  *
  * Usage (driver jar on classpath, env from secrets/databricks.env):
- *   java -cp runtime/openidm/lib/databricks-jdbc-2.7.3.jar \
+ *   java -cp runtime/openidm/lib/databricks-jdbc-3.4.3.jar \
  *        databricks/JdbcRunner.java "SELECT 1" [@file.sql ...]
  *   java databricks/JdbcRunner.java --describe-auth   (no query; prints the
  *        auth method and redacted effective URL)
