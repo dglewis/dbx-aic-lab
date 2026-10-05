@@ -409,3 +409,25 @@ so the customizer and JdbcRunner are unchanged.
   Zulu 21.0.11.
 - No JVM flags needed. 3.4.3 always uses Arrow and ignores `EnableArrow`
   (logged as deprecated), so that URL property is gone from the template.
+
+## 2026-10-05 — JDBC driver 3.4.3: failover, server mode, smoke script
+
+- Kubernetes pod kill during reads: failover recovered in 24.6 s
+  (`failover-ops-20261005T190232Z.log`), as with 2.7.3.
+- Kubernetes pod kill 8 s into a 50,000-row liveSync
+  (`failover-livesync-20261005T190312Z.log`): no change skipped — the
+  stored token stayed at the baseline (259). The interrupted call returned
+  nothing until curl's 300 s timeout; the next liveSync failed with HTTP
+  500 "Interim message missed; operation aborted. Sequence number of
+  result message: 50,002; expected sequence number of next message: 1";
+  after cleanup, liveSync succeeded (token 263). With 2.7.3 the same
+  scenario hung (2026-09-30 entry).
+- Control, same 50,000-row liveSync with no pod kill
+  (`control-livesync-20261005T220459Z.log`): 50,001 changes in 9.5 s, token
+  280 → 283, the next liveSync clean. The large delta alone is not the
+  cause; the failure needs the pod kill mid-stream (research Unknowns #15).
+- Server mode (T1): **16/16** (`acceptance-node-2026-10-05T19-12-15.log`).
+  The run before it, started right after the topology switch, failed 10
+  checks with 404 "Resource not found"; not investigated.
+- `acceptance-test.sh` in-process: **15/15**
+  (`acceptance-20261005-111058.log`).
