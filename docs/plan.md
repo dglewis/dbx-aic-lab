@@ -151,13 +151,27 @@ Kubernetes — high availability (T3, 2 replicas):
       per connector server (incl. `rcslocal`) — **16/16** on both RCS paths,
       2026-09-30
 
+Inbound sync — mapping and schedule ✅ 2026-10-05 (T3; spike-results 2026-10-05):
+- [x] `managed/businessRecord`, inbound mapping, liveSync schedule (tracked
+      disabled); recon by ID, full recon and liveSync insert/update/delete
+      reach the managed objects; suite **16/16** with the mapping in place
+- [x] Scheduled liveSync every 5 s under 5 rounds of 10–30 updates: every
+      commit applied, managed objects matched 2–4 s after the last commit
+- [x] Mapping reshaped 2026-10-06: `record_id` authoritative in IDM, only
+      `ref_id` synced; unknown IDs ignored; a deleted row clears `ref_id`
+      and keeps the record — every case verified through liveSync and a
+      full recon, suite **16/16**
+- [ ] Poll interval for real use (vs warehouse auto-stop and cost)
+- [ ] Outbound mapping (`managed/outboundRecord` → Databricks, implicit sync)
+
 Known concerns — recorded, not blocking; revisit before the tenant step
 (detail: research doc, Unknowns #14, #15):
 - [ ] A fresh RCS pod can't reach Databricks until IDM's connector test runs
       on it — hits every pod restart and every failover
 - [ ] Requests lost between IDM and the RCS pods stall up to IDM's 900 s
       group check — seen with a pod kill and, without one, while the Mac
-      slept; recheck with the Mac kept awake
+      slept; rechecked awake 2026-10-05: a liveSync across a pod kill still
+      fails
 
 ## History table (SCD Type 2) — proof
 

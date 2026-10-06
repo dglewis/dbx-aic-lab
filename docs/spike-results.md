@@ -431,3 +431,97 @@ so the customizer and JdbcRunner are unchanged.
   checks with 404 "Resource not found"; not investigated.
 - `acceptance-test.sh` in-process: **15/15**
   (`acceptance-20261005-111058.log`).
+
+## 2026-10-05 — inbound mapping and scheduled liveSync (T3)
+
+Built `managed/businessRecord`, the mapping
+`systemDatabricksBusinessRecord_managedBusinessRecord` and a liveSync
+schedule (design: design.md → IDM object model and mappings). All runs
+through the two Kubernetes RCS pods, driver 3.4.3.
+
+**Bring-up.** IDM loaded the managed object type, mapping and schedule
+without a restart.
+- Full recon: SUCCESS, 3 managed objects (BR-001..003).
+- Manual liveSync, out of band: insert BR-LS1 + update BR-002 → created
+  and updated; delete BR-LS1 + revert BR-002 → deleted and reverted.
+- Recon by ID: BR-003 changed out of band, then
+  `recon?_action=reconById&id=BR-003` → situation CONFIRMED, status
+  SUCCESS, managed object updated; reverted the same way.
+- Acceptance suite with the mapping in place: **16/16**
+  (`acceptance-node-2026-10-05T23-20-30.log`); its test rows were created
+  and removed in managed objects too.
+
+**Scheduled liveSync under load** (`livesync-schedule-20261005T232442Z.log`).
+Method: schedule enabled over REST at 5 s (`concurrentExecution: false`).
+Five rounds; each round commits a random 10–30 single-row
+`UPDATE … SET ref_id='REF-R<round>-<n>'` statements to a random one of
+BR-001..003 (one Delta commit each, through `JdbcRunner`), then polls
+`managed/businessRecord` every 2 s until each object holds the last value
+written to it (timeout 180 s). Recorded per round: the stored sync token
+before and after, and the time from the last commit to a match. Then the
+schedule was disabled and the original values restored with one manual
+liveSync.
+
+| Round | Commits | Matched after last commit | Token |
+|---|---|---|---|
+| 1 | 14 | 2.1 s | 297 → 311 |
+| 2 | 21 | 4.1 s | 311 → 332 |
+| 3 | 17 | 4.1 s | 332 → 349 |
+| 4 | 18 | 4.1 s | 349 → 367 |
+| 5 | 22 | 2.1 s | 367 → 389 |
+
+- Every round the token advanced by exactly the number of commits, and
+  every object ended at its last written value: no change lost or skipped.
+- 2–4 s is within one schedule interval; the 2 s polling sets the
+  resolution.
+- Commits took about 3 s each, so the schedule consumed changes while each
+  round was still writing.
+
+## 2026-10-06 — inbound mapping reshaped: ref_id only, IDM authoritative
+
+The mapping now treats `record_id` as authoritative in IDM: Databricks only
+supplies `ref_id` (design.md → IDM object model and mappings). Changes:
+`ref_id` the only mapped property; `ABSENT` → `IGNORE`; `SOURCE_MISSING` →
+`UNLINK` plus a `postAction` that removes `ref_id`. T3, driver 3.4.3.
+
+Method (`refid-mapping-20261006T120614Z.log`): create business record
+BR-T1 in IDM (no `ref_id`), then drive each case through Databricks
+commits and one manual liveSync per step (recon by ID for the first);
+after each, read the managed object and IDM's sync audit
+(`audit/sync`, by source ID).
+
+| Case | Situation → action | Managed object |
+|---|---|---|
+| Row appears for an existing record (recon by ID) | `FOUND` → `UPDATE` | `ref_id` set |
+| Row with an unknown `record_id` | `ABSENT` → `IGNORE` | none created |
+| `ref_id` changed | `CONFIRMED` → `UPDATE` | updated |
+| `ref_id` set to NULL | `CONFIRMED` → `UPDATE` | `ref_id` removed |
+| Row deleted | `SOURCE_MISSING` → `UNLINK` (+ `postAction`) | `ref_id` removed, record kept |
+| Deleted row inserted again | `FOUND` → `UPDATE` | correlated again, `ref_id` set |
+| Unknown row deleted | `ALL_GONE` → `NOREPORT` | nothing |
+
+- Acceptance suite with the new mapping: **16/16**
+  (`acceptance-node-2026-10-06T12-08-29.log`); its test rows were ignored,
+  so no managed objects were created.
+
+**Full reconciliation** (`refid-recon-20261006T131414Z.log`). Method:
+create business records BR-T1..T3 in IDM; insert rows BR-T1 and BR-T2 and
+link both with recon by ID; then, with no liveSync, update BR-T1's
+`ref_id`, delete BR-T2's row, insert BR-T3's row and an unknown BR-UNK1;
+run one full recon; read the recon summary, the managed objects and the
+links.
+
+| Record | Situation → action | Managed object | Link |
+|---|---|---|---|
+| BR-T1 | `CONFIRMED` → `UPDATE` | `ref_id` updated | kept |
+| BR-T2 (row deleted) | `SOURCE_MISSING` → `UNLINK` (+ `postAction`) | `ref_id` removed, record kept | removed |
+| BR-T3 (not linked yet) | `FOUND` → `UPDATE` | `ref_id` set | created |
+| BR-UNK1 | `ABSENT` → `IGNORE` | none created | none |
+
+- Recon summary: `ABSENT` 1, `CONFIRMED` 4 (BR-T1 + BR-001..003),
+  `SOURCE_MISSING` 1, `FOUND` 1; 7 SUCCESS, 0 FAILURE. A deleted row
+  reaches recon as `SOURCE_MISSING` in the target phase, and the same
+  policy and `postAction` apply as in liveSync.
+- Per-record attribution is from the final managed objects and links: the
+  per-entry recon audit query (`audit/recon` by `reconId`) returned no
+  results.
