@@ -1,0 +1,12 @@
+{
+    "enabled": false,
+    "persisted": true,
+    "concurrentExecution": false,
+    "type": "simple",
+    "repeatInterval": 5000,
+    "invokeService": "provisioner",
+    "invokeContext": {
+        "action": "liveSync",
+        "source": "system/databricks/businessRecord"
+    }
+}

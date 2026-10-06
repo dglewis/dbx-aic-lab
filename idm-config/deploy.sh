@@ -79,6 +79,13 @@ done
 
 # conf last: dropping the provisioner triggers connector activation
 CONF=runtime/openidm/conf
+# Our managed object types, merged into IDM's own managed.json (vendor file,
+# not tracked); a same-name object is replaced, so redeploys are idempotent.
+for f in idm-config/managed/*.json; do
+  jq --slurpfile o "$f" '.objects |= (map(select(.name != $o[0].name)) + $o)' \
+    "$CONF/managed.json" > "$CONF/managed.json.tmp"
+  mv "$CONF/managed.json.tmp" "$CONF/managed.json"
+done
 if [[ "$TOPOLOGY" == rcs* ]]; then
   cp "idm-config/topology/$TOPOLOGY/provisioner.openicf.connectorinfoprovider.json" "$CONF/"
   if $CLIENT_MODE; then

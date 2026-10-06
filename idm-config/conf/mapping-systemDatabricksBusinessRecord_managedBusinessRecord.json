@@ -1,0 +1,30 @@
+{
+    "source": "system/databricks/businessRecord",
+    "target": "managed/businessRecord",
+    "reconSourceQueryPaging": true,
+    "reconSourceQueryPageSize": 10000,
+    "correlationQuery": {
+        "type": "text/javascript",
+        "source": "var qry = {'_queryFilter': 'record_id eq \"' + source.record_id + '\"'}; qry"
+    },
+    "properties": [
+        {
+            "source": "ref_id",
+            "target": "ref_id"
+        }
+    ],
+    "policies": [
+        {
+            "situation": "ABSENT",
+            "action": "IGNORE"
+        },
+        {
+            "situation": "SOURCE_MISSING",
+            "action": "UNLINK",
+            "postAction": {
+                "type": "text/javascript",
+                "source": "openidm.patch('managed/businessRecord/' + target._id, null, [{'operation': 'remove', 'field': '/ref_id'}]);"
+            }
+        }
+    ]
+}

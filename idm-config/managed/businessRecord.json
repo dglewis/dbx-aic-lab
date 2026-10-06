@@ -1,0 +1,49 @@
+{
+    "name": "businessRecord",
+    "schema": {
+        "$schema": "http://forgerock.org/json-schema#",
+        "type": "object",
+        "title": "Business Record",
+        "description": "Inbound from Databricks (system/databricks/businessRecord)",
+        "required": [
+            "record_id"
+        ],
+        "order": [
+            "_id",
+            "record_id",
+            "ref_id",
+            "last_modified"
+        ],
+        "properties": {
+            "_id": {
+                "description": "Business record ID",
+                "title": "ID",
+                "viewable": false,
+                "searchable": false,
+                "type": "string"
+            },
+            "record_id": {
+                "description": "Databricks record_id",
+                "title": "Record ID",
+                "viewable": true,
+                "searchable": true,
+                "type": "string"
+            },
+            "ref_id": {
+                "description": "Databricks ref_id",
+                "title": "Reference ID",
+                "viewable": true,
+                "searchable": true,
+                "type": "string"
+            },
+            "last_modified": {
+                "description": "Databricks last_modified (read-only at source)",
+                "title": "Last Modified",
+                "viewable": true,
+                "searchable": false,
+                "userEditable": false,
+                "type": "string"
+            }
+        }
+    }
+}

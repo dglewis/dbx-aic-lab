@@ -118,7 +118,8 @@ The suite needs the live lab — it is a manual gate, not a CI job.
 | `runtime/openidm/` | no (gitignored) | Extracted IDM 8.1.1 — rebuild via `unzip IDM-8.1.1.zip -d runtime/` |
 | `runtime/opendj/` | no (gitignored) | Extracted DS 8.1.1 (IDM's repository) — binaries AND live instance data; `rm -rf runtime/` is the lab reset |
 | `secrets/` | no (gitignored) | Sensitive material: DS deployment ID, CA cert, Databricks credentials (`databricks.env`) |
-| `idm-config/conf/` | yes | Provisioner + mapping JSON (`provisioner.openicf-*.json`, `sync.json`) — copied into `runtime/openidm/conf/` |
+| `idm-config/conf/` | yes | Provisioner, mapping and schedule JSON (`provisioner.openicf-*.json`, `mapping-*.json`, `schedule-*.json`) — copied into `runtime/openidm/conf/` |
+| `idm-config/managed/` | yes | Managed object types, one file each — merged into IDM's `managed.json` by `deploy.sh` |
 | `idm-config/script/` | yes | ScriptedSQL Groovy scripts (one per ICF operation + customizer) |
 | `databricks/` | yes | Lab tooling: `smoke-test.sh` (JDBC connectivity), `apply-sql.sh` + `JdbcRunner.java` (run SQL over the driver), `sql/` (DDL, CDF setup, seed data) |
 | `test/` | yes | Node/Vitest acceptance suite (`cd test && npm install && npm test`) — IDM REST assertions + Databricks-native out-of-band checks over the SQL Statement Execution REST API; profile-driven (one profile per topology, `test/env/*.json`); writes `test/runs/acceptance-node-*.log` + JUnit XML. `test/unit/`: offline unit tests (`npm run test:unit`) |
@@ -222,6 +223,30 @@ stores absolute paths — symptom: `info/ping` returns
 rm -rf runtime/openidm/felix-cache     # regenerated at start
 runtime/opendj/bin/start-ds
 cd runtime/openidm && ./startup.sh
+```
+
+### Inbound sync: reconcile, liveSync, schedule
+
+Any topology. Mapping and schedule: [design.md → IDM object model and mappings](docs/design.md#idm-object-model-and-mappings).
+
+```bash
+A=(-sk -u openidm-admin:openidm-admin); B=https://localhost:8443/openidm
+MAP=systemDatabricksBusinessRecord_managedBusinessRecord
+# 1. One record first — proves the mapping before any bulk run:
+curl "${A[@]}" -X POST "$B/recon?_action=reconById&mapping=$MAP&id=BR-001&waitForCompletion=true"
+curl "${A[@]}" "$B/recon/<_id from above>"     # situationSummary, statusSummary
+# 2. Full reconciliation: sets ref_id on every business record that has a
+#    Databricks row; creates nothing (record_id is authoritative in IDM):
+curl "${A[@]}" -X POST "$B/recon?_action=recon&mapping=$MAP&waitForCompletion=true"
+# 3. One liveSync by hand:
+curl "${A[@]}" -X POST "$B/system/databricks/businessRecord?_action=liveSync"
+# 4. Schedule on (off: false). Ships disabled — while on, it keeps the
+#    warehouse awake, and the acceptance suite's liveSync check expects it off.
+curl "${A[@]}" "$B/config/schedule/liveSync_systemDatabricksBusinessRecord" \
+  | jq '.enabled = true | del(._id)' \
+  | curl "${A[@]}" -X PUT -H 'Content-Type: application/json' -d @- \
+      "$B/config/schedule/liveSync_systemDatabricksBusinessRecord"
+# idm-config/deploy.sh resets it to the tracked file (disabled).
 ```
 
 ### Plain-JVM RCS path, client mode (topology T2 — the target)

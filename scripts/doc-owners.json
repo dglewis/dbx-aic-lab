@@ -50,6 +50,11 @@
       "fact": "why systems don't share an RCS",
       "pattern": "couples? (unrelated )?systems",
       "owner": "docs/adr-003-rcs-per-external-system.md"
+    },
+    {
+      "fact": "recon source paging settings",
+      "pattern": "reconSourceQueryPag",
+      "owner": "docs/design.md"
     }
   ]
 }

@@ -68,6 +68,34 @@ Bidirectional = two unidirectional mappings over disjoint datasets (no loop risk
 | Managed object | `managed/businessRecord` (target) | `managed/outboundRecord` (source) |
 | Mapping | recon + liveSync (CDF sync token) | implicit sync on managed-object change + recon |
 
+**Inbound, as built** (the outbound mapping isn't built yet):
+- `managed/businessRecord`: `record_id` (required), `ref_id`,
+  `last_modified`. Stored by IDM's generic `managed/*` mapping in DS, so no
+  repository change.
+- `record_id` is authoritative in IDM: business records already exist
+  there, and Databricks only supplies `ref_id`. `last_modified` isn't
+  mapped.
+- Mapping `systemDatabricksBusinessRecord_managedBusinessRecord`, one file
+  per mapping: correlates on `record_id`; maps `ref_id` only (a NULL in
+  Databricks removes it in IDM). Situations:
+  - `ABSENT` → `IGNORE`: a `record_id` with no business record in IDM is
+    normal and skipped silently; never created.
+  - `FOUND` / `CONFIRMED` → `UPDATE` (IDM defaults): sets `ref_id`.
+  - `SOURCE_MISSING` (the row is deleted, seen through CDF) → `UNLINK`,
+    then a `postAction` removes `ref_id`. The business record stays; if
+    the row comes back it correlates again (`FOUND`).
+  - Deletes of rows never linked arrive as `ALL_GONE` → ignored (default).
+- Recon pages the source: `reconSourceQueryPaging: true`,
+  `reconSourceQueryPageSize: 10000` (Ping's clustered default; not yet
+  tuned). Required, not tuning: without it IDM read every source record
+  separately — one Databricks query per row. The SearchScript pages by key
+  (`record_id > <cookie> ORDER BY record_id LIMIT n`), so every page costs
+  the same.
+- liveSync schedule: simple trigger, `concurrentExecution: false` (a slow
+  poll never overlaps the next). The interval is still open — it trades
+  against warehouse auto-stop ([Sync / change detection](#sync--change-detection)).
+  The lab file ships disabled at 5 s.
+
 **Provisioner naming convention:** a provisioner is named for the *system* it
 connects to — never for a flow direction, which belongs to mappings. With
 ScriptedSQL decided (ADR-001), a single `provisioner.openicf-databricks.json`
