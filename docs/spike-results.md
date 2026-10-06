@@ -525,3 +525,42 @@ links.
 - Per-record attribution is from the final managed objects and links: the
   per-entry recon audit query (`audit/recon` by `reconId`) returned no
   results.
+
+## 2026-10-06 — full-recon baseline at 100,000 rows (15:1)
+
+How long a full recon of the update-only mapping takes when IDM holds
+about 1/15th of the Databricks keys. T3, driver 3.4.3, IDM recon defaults
+(10 task threads) unless stated.
+
+Method: 100,000 rows `LD-000001` … `LD-100000` inserted in one commit
+(5.9 s); a business record in IDM for every 15th ID — 6,666, no `ref_id`,
+unlinked (REST creates, 10 in parallel, 12.4 s); plus the 3 seeded
+records. Recon started without waiting and polled every 10 s
+(`recon/<id>`); the RCS pod log's SEARCH entries counted the reads against
+Databricks.
+
+| | No source paging (default) | Paging, page size 10,000 |
+|---|---|---|
+| Log | `recon-100k-20261006T132415Z.log` | `recon-100k-paged-20261006T143102Z.log` |
+| Outcome | Cancelled after 20,189 records | SUCCESS, 100,003 records |
+| Time | ~62 min | **27.1 s** (IDM duration) |
+| Rate | ~6 records/s | ~3,700 records/s |
+| SEARCH calls | ~350 per minute — one per record | **11** — one per page |
+
+- Paged situations: `ABSENT` 93,334 (→ `IGNORE`), `FOUND` 5,321,
+  `CONFIRMED` 1,348 (the 1,345 linked before the cancel, plus BR-001..003);
+  100,003 SUCCESS, 0 FAILURE. All 6,666 business records got their
+  `ref_id`; target phase 6,669, nothing orphaned.
+- Without paging, IDM read each source record individually; with paging it
+  used the full rows from each page. Progress moved in steps of 1,024 in
+  both runs: that is `reconProgressStateUpdateInterval` (how often the
+  counts are saved), not batching.
+- Straight-line extrapolation to 30 million rows at the paged rate: ~2.3 h.
+  Not tested at that scale.
+
+Cleanup (`cleanup-100k-20261006T143326Z.log`): deleted the LD rows in
+Databricks, then one liveSync drained ~200,000 change events (the insert
+and the delete) in 77 s — unlinking the 6,666 and clearing `ref_id` — and
+the 6,666 business records were deleted over REST (15.6 s). Back to 3
+records on each side. Deleting the records and links directly and moving
+the stored sync token forward would skip the drain.

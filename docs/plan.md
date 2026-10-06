@@ -161,6 +161,10 @@ Inbound sync — mapping and schedule ✅ 2026-10-05 (T3; spike-results 2026-10-
       `ref_id` synced; unknown IDs ignored; a deleted row clears `ref_id`
       and keeps the record — every case verified through liveSync and a
       full recon, suite **16/16**
+- [x] Full-recon baseline 2026-10-06, 100,000 Databricks rows vs 6,666
+      business records (15:1): 27 s with source paging, ~6 records/s
+      without it
+- [ ] Tune the recon page size (10,000 so far)
 - [ ] Poll interval for real use (vs warehouse auto-stop and cost)
 - [ ] Outbound mapping (`managed/outboundRecord` → Databricks, implicit sync)
 
