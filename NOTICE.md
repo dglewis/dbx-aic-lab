@@ -31,7 +31,9 @@ This repository contains **no Ping Identity software or source code**.
   APIs. They import Ping/ICF framework classes at runtime (as any connector
   script must) but include no vendor sample code.
 - The Databricks JDBC driver is fetched from Maven Central
-  (`com.databricks:databricks-jdbc`, Apache-2.0 per its POM) and is not
+  (`com.databricks:databricks-jdbc`, Apache-2.0 per its POM from version 3;
+  versions below 3 are the legacy Simba driver under Databricks' own
+  proprietary driver license) and is not
   committed to this repository.
 - "Ping Identity", "PingIDM", "PingOne Advanced Identity Cloud", and
   "Databricks" are trademarks of their respective owners, as are

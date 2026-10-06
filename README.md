@@ -64,7 +64,7 @@ redistribution for each vendor artifact: [NOTICE](NOTICE.md).
 | PingIDM | 8.1.1 (`IDM-8.1.1.zip`, repo root) | Sync engine standing in for AIC; ships the ScriptedSQL connector |
 | PingDS | 8.1.1 (`DS-8.1.1.zip`, repo root) | IDM's required repository |
 | Databricks workspace | Free Edition works | SQL warehouse, Unity Catalog, a service principal with an OAuth secret (OAuth M2M; a PAT is optional — [ADR-002](docs/adr-002-databricks-authentication.md)) |
-| Databricks JDBC driver | `databricks-jdbc` [3.4.3](https://central.sonatype.com/artifact/com.databricks/databricks-jdbc/3.4.3) (Maven Central) | Fetched, never committed; [driver docs](https://docs.databricks.com/aws/en/integrations/jdbc-oss/) |
+| Databricks JDBC driver | `databricks-jdbc` [3.4.3](https://central.sonatype.com/artifact/com.databricks/databricks-jdbc/3.4.3) (Maven Central) | Fetched, never committed; [driver docs](https://docs.databricks.com/aws/en/integrations/jdbc-oss/). Use 3.x or later: versions below 3 are the [legacy Simba driver](https://docs.databricks.com/aws/en/integrations/jdbc/) under the same name (needs `EnableArrow=0` on Java 17+) |
 | JDK 21 / JDK 25 | Homebrew `openjdk@21`, `openjdk@25` | Which needs which: Prerequisites below |
 | Node.js | 18+ | Acceptance suite (Vitest) |
 | Maven | any | One-time driver fetch |
