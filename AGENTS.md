@@ -49,6 +49,7 @@ for stale copies in the same commit.
 | Procedures (runbooks), versions, prerequisites | `README.md` |
 | Open questions, research evidence, vendor citations | `docs/rcs-kubernetes-research.md` (Unknowns table, Sources) |
 | What a Databricks team must provide | `docs/databricks-requirements.md` — a standalone handout; others link to it |
+| AIC consent management (capabilities, data model, downstream delivery) | `docs/aic-consent-management.md` — a standalone handout; Word copy generated from it |
 | Licensing and redistribution | `NOTICE.md` |
 | Rules for agents | this file — pointers, not copies |
 

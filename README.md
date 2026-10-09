@@ -51,6 +51,11 @@ The documentation trail, in reading order:
 [spike results](docs/spike-results.md) (dated findings, including retracted
 ones). Phase-2 background: [RCS and Kubernetes research](docs/rcs-kubernetes-research.md).
 
+Standalone handout, outside the trail:
+[AIC consent management](docs/aic-consent-management.md). Its Word copy is
+generated from the Markdown; after editing, regenerate it with
+`pandoc docs/aic-consent-management.md -f gfm -t docx -o docs/aic-consent-management.docx`.
+
 ## What you need
 
 Versions are pinned here only; other docs link back. Licensing and
