@@ -358,6 +358,40 @@ Don't:
 Lab vs this: the lab builds inside minikube and skips steps 1, 2's
 checksum, and 4.
 
+#### Databricks connector: what goes on top of the Ping image
+
+The Ping RCS image carries the RCS and the ScriptedSQL connector. The
+Databricks connector is split between the image and AIC:
+
+| Where | What |
+|---|---|
+| The image (pod) | JDBC driver, Groovy scripts — steps 1–3 |
+| AIC | Connector configuration and Databricks credentials — steps 4–5 |
+
+1. **Driver:** `databricks-jdbc` at the version in [What you need](#what-you-need),
+   from [Maven Central](https://repo1.maven.org/maven2/com/databricks/databricks-jdbc/);
+   verify its `.sha1`.
+2. **Image:**
+
+   ```dockerfile
+   FROM gcr.io/forgerock-io/rcs:<tag>
+   COPY --chown=11111:0 databricks-jdbc-<version>.jar /opt/openicf/lib/
+   COPY --chown=11111:0 scripts/ /opt/openicf/scripts/databricks/
+   ```
+
+   `scripts/` holds the files from `idm-config/script/`.
+3. **Deploy:** push with a new tag and roll the StatefulSet. Pods reach
+   the Databricks workspace host over outbound HTTPS.
+4. **Databricks credentials:** ESV secrets in AIC for the service
+   principal's client ID and secret, and an ESV for the JDBC URL; the pod
+   holds only its own RCS login ([AIC step 6](#aic-one-rcs-cluster-per-system)).
+   How they reach the driver: [design.md → Credential path](docs/design.md#credential-path-scriptedsql-as-built).
+5. **Connector in AIC:** create it from `idm-config/conf/provisioner.openicf-databricks.json`
+   with `scriptRoots` `["/opt/openicf/scripts/databricks"]`,
+   `connectorHostRef` set to the server or cluster name, and the
+   `&{databricks.…}` placeholders replaced by `&{esv.…}` ones; then add the
+   mapping and schedule from `idm-config/conf/`.
+
 ### AIC: one RCS cluster per system
 
 For each external system, with names per
